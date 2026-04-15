@@ -519,7 +519,7 @@ public struct CEFWebView: NSViewRepresentable {
 
 **Usage:**
 ```swift
-@State private var url: URL? = URL(string: "https://example.com")
+@State private var url: URL? = URL(string: "https://google.com")
 @State private var webState = CEFWebViewState()
 
 var body: some View {

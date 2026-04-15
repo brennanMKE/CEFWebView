@@ -1,5 +1,8 @@
 import Cocoa
 import CEFWrapper
+import os.log
+
+nonisolated(unsafe) let cefLogger = Logger(subsystem: "co.sstools.CEFWebView", category: "CEFApplication")
 
 // MARK: - CEF Application Lifecycle Manager
 
@@ -17,12 +20,18 @@ public final class CEFApplication {
     /// call exit() — it does not return. If this is the main browser process, returns normally.
     /// Must be called from the main thread before SwiftUI initializes.
     public nonisolated static func handleSubprocessIfNeeded() {
+        cefLogger.debug("handleSubprocessIfNeeded called")
+
         let exitCode = CEFWrapper.executeSubprocess(withArgc: CommandLine.argc, argv: CommandLine.unsafeArgv)
+        cefLogger.debug("CefExecuteProcess returned exitCode=\(exitCode)")
+
         if exitCode >= 0 {
             // This is a subprocess; exit with the exit code returned by CefExecuteProcess
+            cefLogger.debug("This is a subprocess, exiting with code \(exitCode)")
             exit(exitCode)
         }
         // exitCode < 0 means main browser process — continue with normal app startup
+        cefLogger.debug("This is the main browser process, continuing startup")
     }
 
     /// Initialize CEF framework. Call once at app startup.
@@ -35,16 +44,28 @@ public final class CEFApplication {
         // Swift bridges initializeCEFWithError: as a throwing method
         do {
             try CEFWrapper.initializeCEF()
+        } catch let error as NSError {
+            let errorDesc = error.localizedDescription
+            print("❌ ========================================")
+            print("❌ CEF INITIALIZATION FAILED")
+            print("❌ ========================================")
+            print("❌ Error: \(errorDesc)")
+            print("❌ Error Code: \(error.code)")
+            print("❌ ========================================")
+            throw CEFError.initializationFailed(reason: errorDesc)
         } catch {
-            print("❌ CEF initialization failed: \(error.localizedDescription)")
-            throw CEFError.initializationFailed
+            print("❌ CEF initialization failed with unknown error: \(error)")
+            throw CEFError.initializationFailed(reason: error.localizedDescription)
         }
 
-        print("✓ CEF initialized")
+        print("✅ ========================================")
+        print("✅ CEF Initialized Successfully")
+        print("✅ ========================================")
         isInitialized = true
         startMessagePump()
-        print("✓ CEF message pump started")
+        print("✅ CEF message pump started")
     }
+
 
     /// Start the CEF message pump on the main thread.
     private func startMessagePump() {
@@ -87,11 +108,21 @@ public final class CEFBrowserHost {
         print("🔧 Creating CEF browser in parentView: \(parentView.frame), url: \(url.absoluteString)")
 
         guard let browserView = CEFWrapper.createBrowser(in: parentView, url: url.absoluteString) else {
-            print("❌ CEFWrapper.createBrowser returned nil")
-            throw CEFError.browserCreationFailed
+            let errorMsg = "CEFWrapper.createBrowser returned nil. This indicates the browser subprocess failed to initialize. " +
+                          "Likely causes: helper executable crash, dyld library loading failure, JIT entitlements missing, " +
+                          "or invalid code signatures. Check system logs and CEF debug log at ~/Library/Caches/com.chromium.webview/debug.log"
+            print("❌ ========================================")
+            print("❌ BROWSER CREATION FAILED")
+            print("❌ ========================================")
+            print("❌ \(errorMsg)")
+            print("❌ ========================================")
+            throw CEFError.browserCreationFailed(reason: errorMsg)
         }
 
-        print("✓ CEF browser view created: \(browserView)")
+        print("✅ ========================================")
+        print("✅ CEF Browser View Created Successfully")
+        print("✅ View: \(browserView)")
+        print("✅ ========================================")
         self.nativeView = browserView
         self.state = state
     }
@@ -144,6 +175,17 @@ public final class CEFBrowserHost {
 
 enum CEFError: Error {
     case resourcesNotFound
-    case initializationFailed
-    case browserCreationFailed
+    case initializationFailed(reason: String)
+    case browserCreationFailed(reason: String)
+
+    var localizedDescription: String {
+        switch self {
+        case .resourcesNotFound:
+            return "CEF resources not found"
+        case .initializationFailed(let reason):
+            return "CEF initialization failed: \(reason)"
+        case .browserCreationFailed(let reason):
+            return "Browser creation failed: \(reason)"
+        }
+    }
 }

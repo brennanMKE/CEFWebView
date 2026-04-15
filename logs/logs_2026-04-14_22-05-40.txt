@@ -1,0 +1,319 @@
+==========================================
+WebView App Logs - Captured at: Tue Apr 14 22:05:40 PDT 2026
+Bundle ID: co.sstools.WebView
+==========================================
+
+--- Swift Logger + NSLog (App Subsystems) ---
+
+Timestamp                       Thread     Type        Activity             PID    TTL  
+
+--- System Logs (All App-Related Processes) ---
+
+Timestamp                       Thread     Type        Activity             PID    TTL  
+
+--- CEF Debug Log (if available) ---
+
+Searching for CEF logs in: /Users/brennan/Library/Caches/com.chromium.webview
+Found: /Users/brennan/Library/Caches/com.chromium.webview/debug.log (last 300 lines):
+
+[69832:2728279:0414/220424.060732:VERBOSE1:components/variations/service/variations_field_trial_creator.cc:83] VariationsSeedUsage:12
+[69832:2728279:0414/220424.060825:VERBOSE1:components/variations/service/variations_field_trial_creator.cc:396] VariationsSetupComplete
+[69832:2728279:0414/220424.082800:VERBOSE1:components/device_event_log/device_event_log_impl.cc:204] [22:04:24.076] Display: EVENT: screen_mac.mm:454 Displays updated, count: 1
+[69832:2728279:0414/220424.082904:VERBOSE1:components/device_event_log/device_event_log_impl.cc:204] [22:04:24.082] Display: EVENT: screen_mac.mm:456 Display[1] bounds=[0,0 1470x956], workarea=[0,33 1470x923], scale=2, rotation=0, panel_rotation=0 internal detected
+[69832:2728279:0414/220424.085151:VERBOSE1:chrome/browser/media/webrtc/webrtc_event_log_manager.cc:122] WebRTC remote-bound event logging enabled.
+[69832:2728279:0414/220424.135328:VERBOSE1:components/proxy_config/pref_proxy_config_tracker_impl.cc:462] 0x134002916c0: set chrome proxy config service to 0x13400240380
+[69832:2728279:0414/220424.136035:VERBOSE1:chrome/updater/tag.cc:1019] getxattr could not read com.apple.application-instance on /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app: Attribute not found (93)
+[69832:2728382:0414/220424.139986:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1517] MSM::InitializeMaybeAsync([this=0x134003c0300])
+[69832:2728382:0414/220424.140128:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1517] MDM::MediaDevicesManager()
+[69832:2728382:0414/220424.140188:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1517] MSM::MediaStreamManager([this=0x134003c0300]))
+[69832:2728400:0414/220424.141346:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Consent To Send Stats": No such file or directory (2)
+[69832:2728279:0414/220424.149682:VERBOSE1:components/enterprise/browser/controller/chrome_browser_cloud_management_controller.cc:190] Cloud management controller initialization aborted as CBCM is not enabled. Please use the `--enable-chrome-browser-cloud-management` command line flag to enable it if you are not using the official Google Chrome build.
+[69832:2728279:0414/220424.153641:VERBOSE1:chrome/browser/enterprise/platform_auth/platform_auth_policy_observer.cc:99] PlatformAuthProviderManager enabled: 0
+[69832:2728279:0414/220424.155785:VERBOSE1:components/policy/core/common/cloud/user_cloud_policy_store.cc:131] [policy_type=google/chrome/user] Initiating immediate policy load from disk
+[69832:2728279:0414/220424.155856:VERBOSE1:components/policy/core/common/cloud/user_cloud_policy_store.cc:234] [policy_type=google/chrome/user] No policy found on disk
+[69832:2728279:0414/220424.170740:WARNING:chrome/browser/signin/account_consistency_mode_manager.cc:74] Desktop Identity Consistency cannot be enabled as no OAuth client ID and client secret have been configured.
+[69832:2728279:0414/220424.170769:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728379:0414/220424.173113:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Web Applications/Logs": No such file or directory (2)
+[69832:2728279:0414/220424.174074:VERBOSE1:components/proxy_config/pref_proxy_config_tracker_impl.cc:462] 0x13400295e40: set chrome proxy config service to 0x13400244440
+[69832:2728279:0414/220424.174215:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728279:0414/220424.174709:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:332] MutablePO2TS::MutablePO2TS
+[69832:2728279:0414/220424.176391:VERBOSE1:components/proxy_config/pref_proxy_config_tracker_impl.cc:462] 0x134002971c0: set chrome proxy config service to 0x13400245b00
+[69832:2728279:0414/220424.176475:VERBOSE1:components/device_event_log/device_event_log_impl.cc:204] [22:04:24.176] Bluetooth: EVENT: bluetooth_api.cc:82 BluetoothAPI: 0x13400187500
+[69832:2728397:0414/220424.176518:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Code Cache/pc": No such file or directory (2)
+[69832:2728279:0414/220424.177879:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728279:0414/220424.177966:VERBOSE1:google_apis/gaia/gaia_auth_util.cc:53] Canonicalized @gmail.com to @gmail.com
+[69832:2728279:0414/220424.177975:VERBOSE1:google_apis/gaia/gaia_auth_util.cc:53] Canonicalized @gmail.com to @gmail.com
+[69832:2728279:0414/220424.178067:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.178271:VERBOSE1:extensions/browser/api/bluetooth_low_energy/bluetooth_low_energy_event_router.cc:292] Initializing BluetoothLowEnergyEventRouter.
+[69832:2728279:0414/220424.179044:VERBOSE1:google_apis/gaia/gaia_auth_util.cc:53] Canonicalized @gmail.com to @gmail.com
+[69832:2728279:0414/220424.179050:VERBOSE1:google_apis/gaia/gaia_auth_util.cc:53] Canonicalized @gmail.com to @gmail.com
+[69832:2728279:0414/220424.179162:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728279:0414/220424.179170:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728279:0414/220424.179174:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728279:0414/220424.179186:VERBOSE1:components/signin/core/browser/account_reconcilor.cc:149] AccountReconcilor::AccountReconcilor
+[69832:2728279:0414/220424.179190:VERBOSE1:components/signin/core/browser/account_reconcilor.cc:179] AccountReconcilor::Initialize
+[69832:2728279:0414/220424.185761:VERBOSE1:chrome/browser/permissions/prediction_service/prediction_model_handler_provider_factory.cc:58] [PermissionsAI]: PredictionModelHandlerProviderFactory::BuildServiceInstanceForBrowserContext
+[69832:2728279:0414/220424.185783:VERBOSE1:chrome/browser/permissions/prediction_service/prediction_model_handler_provider_factory.cc:91] [PermissionsAI]: PredictionModelHandlerProviderFactory::BuildServiceInstanceForBrowserContext PermissionsAIv4 not enabled, passage embedder not setup.
+[69832:2728279:0414/220424.185797:VERBOSE1:chrome/browser/permissions/prediction_service/prediction_model_handler_provider.cc:60] [PermissionsAI] PredictionModelHandlerProvider ctor passage_embedder available: false
+[69832:2728279:0414/220424.185801:VERBOSE1:chrome/browser/permissions/prediction_service/prediction_model_handler_provider.cc:63] [PermissionsAI] PredictionModelHandlerProvider ctor optimization_guide available: true
+[69832:2728279:0414/220424.187320:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.187772:VERBOSE1:components/segmentation_platform/internal/database/cached_result_provider.cc:54] CachedResultProvider loaded prefs with results from previous session: PredictionResult: timestamp: 13420608993411654 result 0: 0 for segmentation key shopping_user
+[69832:2728279:0414/220424.187806:VERBOSE1:components/segmentation_platform/internal/database/cached_result_provider.cc:54] CachedResultProvider loaded prefs with results from previous session: PredictionResult: timestamp: 13420697779714637 result 0: 1 for segmentation key cross_device_user
+[69832:2728279:0414/220424.189917:VERBOSE1:extensions/browser/extension_registrar.cc:531] AddComponentExtension Web Store
+[69832:2728279:0414/220424.190366:VERBOSE1:extensions/browser/extension_registrar.cc:531] AddComponentExtension Chromium PDF Viewer
+[69832:2728279:0414/220424.190727:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.190736:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.190810:VERBOSE1:chrome/browser/profiles/profile_manager.cc:2013] ForceSigninCheck: 0, 0, 1
+[69832:2728381:0414/220424.191367:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Policy/User Policy": No such file or directory (2)
+[69832:2728381:0414/220424.191409:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Policy/Signing Key": No such file or directory (2)
+[69832:2728379:0414/220424.191801:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Widevine Content Decryption Module
+[69832:2728381:0414/220424.191801:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Subresource Filter Rules
+[69832:2728279:0414/220424.191823:VERBOSE1:components/component_updater/installer_policies/on_device_head_suggest_component_installer.cc:59] On Device Head Component will fetch model for locale: ENUS500000
+[69832:2728279:0414/220424.191934:VERBOSE1:chrome/browser/component_updater/trust_token_key_commitments_component_installer.cc:22] Registering Trust Token Key Commitments component.
+[69832:2728279:0414/220424.191943:VERBOSE1:chrome/browser/component_updater/first_party_sets_component_installer.cc:37] Registering Related Website Sets component.
+[69832:2728279:0414/220424.191950:VERBOSE1:chrome/browser/component_updater/privacy_sandbox_attestations_component_installer.cc:181] Registering Privacy Sandbox Attestations component
+[69832:2728279:0414/220424.191971:VERBOSE1:chrome/browser/component_updater/file_type_policies_component_installer.cc:126] Registering File Type Policies component.
+[69832:2728397:0414/220424.192020:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Privacy Sandbox Attestations
+[69832:2728398:0414/220424.192039:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Optimization Hints
+[69832:2728279:0414/220424.192053:VERBOSE1:chrome/browser/component_updater/actor_safety_lists_component_installer.cc:139] Registering Actor Safety Lists Component.
+[69832:2728399:0414/220424.192024:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for OnDeviceHeadSuggest
+[69832:2728279:0414/220424.192095:VERBOSE1:chrome/browser/component_updater/translate_kit_component_installer.cc:209] Registering TranslateKit component.
+[69832:2728279:0414/220424.192115:VERBOSE1:chrome/browser/component_updater/wasm_tts_engine_component_installer.cc:286] Registering WASM TTS Engine component.
+[69832:2728400:0414/220424.192120:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Certificate Error Assistant
+[69832:2728279:0414/220424.192126:VERBOSE1:chrome/browser/component_updater/captcha_provider_component_installer.cc:175] Registering Captcha Provider component.
+[69832:2728401:0414/220424.192182:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for File Type Policies
+[69832:2728279:0414/220424.192202:VERBOSE1:chrome/browser/profiles/profile_manager.cc:1376] AddKeepAlive(Default, kProfileCreationFlow). keep_alives=[kWaitingForFirstBrowserWindow (1), kProfileCreationFlow (1)]
+[69832:2728279:0414/220424.192213:VERBOSE1:chrome/browser/profiles/profile_manager.cc:1458] ClearFirstBrowserWindowKeepAlive(Default). keep_alives=[kProfileCreationFlow (1)]
+[69832:2728429:0414/220424.192048:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Trust Token Key Commitments
+[69832:2728402:0414/220424.192185:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for CRLSet
+[69832:2728433:0414/220424.192268:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Origin Trials
+[69832:2728431:0414/220424.192411:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for MEI Preload
+[69832:2728433:0414/220424.192584:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for PKI Metadata
+[69832:2728398:0414/220424.192681:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Safety Tips
+[69832:2728435:0414/220424.192691:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Crowd Deny
+[69832:2728397:0414/220424.192751:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Zxcvbn Data Dictionaries
+[69832:2728430:0414/220424.192763:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Actor Safety Lists
+[69832:2728399:0414/220424.192822:VERBOSE1:components/component_updater/installer_policies/on_device_head_suggest_component_installer.cc:83] On Device head model is successfully installed at directory: /Users/brennan/Library/Caches/com.chromium.webview/OnDeviceHeadSuggestModel/20251024.824731831.14
+[69832:2728436:0414/220424.192775:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Amount Extraction Heuristic Regexes
+[69832:2728401:0414/220424.192890:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Probabilistic Reveal Tokens
+[69832:2728399:0414/220424.192987:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for WASM TTS Engine
+[69832:2728279:0414/220424.235951:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.235976:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69863:2728407:0414/220424.285358:VERBOSE1:components/viz/service/main/viz_main_impl.cc:86] VizNullHypothesis is disabled (not a warning)
+[69864:2728497:0414/220424.298082:WARNING:net/dns/address_sorter_posix.cc:457] FromSockAddr failed on netmask
+[69832:2728279:0414/220424.302034:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Origin Trials
+[69832:2728279:0414/220424.302073:VERBOSE1:components/component_updater/component_updater_service.cc:166] CrxUpdateService starting up. First update attempt will take place in 60 s seconds. Next update attempt will take place in 18000 s seconds. 
+[69832:2728279:0414/220424.302085:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Optimization Hints
+[69832:2728279:0414/220424.302093:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 655 in /Users/brennan/Library/Caches/com.chromium.webview/OptimizationHints/655
+[69832:2728279:0414/220424.302111:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Privacy Sandbox Attestations
+[69832:2728279:0414/220424.302120:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 2025.6.16.0 in /Users/brennan/Library/Caches/com.chromium.webview/PrivacySandboxAttestationsPreloaded/2025.6.16.0
+[69832:2728279:0414/220424.302130:VERBOSE1:chrome/browser/component_updater/privacy_sandbox_attestations_component_installer.cc:111] Privacy Sandbox Attestations Component ready, version 2025.6.16.0 in /Users/brennan/Library/Caches/com.chromium.webview/PrivacySandboxAttestationsPreloaded/2025.6.16.0
+[69832:2728279:0414/220424.302135:VERBOSE1:chrome/browser/component_updater/privacy_sandbox_attestations_component_installer.cc:188] Received privacy sandbox attestations file
+[69832:2728279:0414/220424.302168:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for OnDeviceHeadSuggest
+[69832:2728279:0414/220424.302192:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 20251024.824731831.14 in /Users/brennan/Library/Caches/com.chromium.webview/OnDeviceHeadSuggestModel/20251024.824731831.14
+[69832:2728279:0414/220424.302220:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for File Type Policies
+[69832:2728279:0414/220424.302226:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 145.0.7584.0 in /Users/brennan/Library/Caches/com.chromium.webview/FileTypePolicies/145.0.7584.0
+[69832:2728279:0414/220424.302229:VERBOSE1:chrome/browser/component_updater/file_type_policies_component_installer.cc:88] Component ready, version 145.0.7584.0 in /Users/brennan/Library/Caches/com.chromium.webview/FileTypePolicies/145.0.7584.0
+[69832:2728279:0414/220424.302233:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Subresource Filter Rules
+[69832:2728279:0414/220424.302252:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 9.66.0 in /Users/brennan/Library/Caches/com.chromium.webview/Subresource Filter/Unindexed Rules/9.66.0
+[69832:2728279:0414/220424.302260:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Widevine Content Decryption Module
+[69832:2728279:0414/220424.302266:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 4.10.2934.0 in /Users/brennan/Library/Caches/com.chromium.webview/WidevineCdm/4.10.2934.0
+[69832:2728279:0414/220424.302275:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Certificate Error Assistant
+[69832:2728279:0414/220424.302281:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 7 in /Users/brennan/Library/Caches/com.chromium.webview/SSLErrorAssistant/7
+[69832:2728279:0414/220424.302287:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for CRLSet
+[69832:2728279:0414/220424.302294:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 10464 in /Users/brennan/Library/Caches/com.chromium.webview/CertificateRevocation/10464
+[69832:2728279:0414/220424.302301:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for MEI Preload
+[69832:2728279:0414/220424.302309:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 1.1.0.3 in /Users/brennan/Library/Caches/com.chromium.webview/MEIPreload/1.1.0.3
+[69832:2728279:0414/220424.302314:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Trust Token Key Commitments
+[69832:2728279:0414/220424.302320:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 2026.3.23.1 in /Users/brennan/Library/Caches/com.chromium.webview/TrustTokenKeyCommitments/2026.3.23.1
+[69832:2728279:0414/220424.302323:VERBOSE1:components/component_updater/installer_policies/trust_token_key_commitments_component_installer_policy.cc:109] Component ready, version 2026.3.23.1 in /Users/brennan/Library/Caches/com.chromium.webview/TrustTokenKeyCommitments/2026.3.23.1
+[69832:2728279:0414/220424.302328:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for PKI Metadata
+[69832:2728279:0414/220424.302333:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 1639 in /Users/brennan/Library/Caches/com.chromium.webview/PKIMetadata/1639
+[69832:2728279:0414/220424.302338:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Safety Tips
+[69832:2728279:0414/220424.302343:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 3091 in /Users/brennan/Library/Caches/com.chromium.webview/SafetyTips/3091
+[69832:2728279:0414/220424.302347:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Crowd Deny
+[69832:2728279:0414/220424.302361:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 2026.4.13.61 in /Users/brennan/Library/Caches/com.chromium.webview/Crowd Deny/2026.4.13.61
+[69832:2728279:0414/220424.302368:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Actor Safety Lists
+[69832:2728279:0414/220424.302374:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 8.6294.2057 in /Users/brennan/Library/Caches/com.chromium.webview/ActorSafetyLists/8.6294.2057
+[69832:2728279:0414/220424.302378:VERBOSE1:chrome/browser/component_updater/actor_safety_lists_component_installer.cc:98] Actor Safety Lists ready, version 8.6294.2057 in /Users/brennan/Library/Caches/com.chromium.webview/ActorSafetyLists/8.6294.2057
+[69832:2728279:0414/220424.302383:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for WASM TTS Engine
+[69832:2728279:0414/220424.302388:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 20260407.1 in /Users/brennan/Library/Caches/com.chromium.webview/WasmTtsEngine/20260407.1
+[69832:2728279:0414/220424.302392:VERBOSE1:chrome/browser/component_updater/wasm_tts_engine_component_installer.cc:141] Component ready, version 20260407.1 in /Users/brennan/Library/Caches/com.chromium.webview/WasmTtsEngine/20260407.1
+[69832:2728279:0414/220424.302397:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Amount Extraction Heuristic Regexes
+[69832:2728279:0414/220424.302404:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 4 in /Users/brennan/Library/Caches/com.chromium.webview/AmountExtractionHeuristicRegexes/4
+[69832:2728279:0414/220424.302409:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Probabilistic Reveal Tokens
+[69832:2728279:0414/220424.302414:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 8.5419.4434 in /Users/brennan/Library/Caches/com.chromium.webview/CaptchaProviders/8.5419.4434
+[69832:2728279:0414/220424.302417:VERBOSE1:chrome/browser/component_updater/captcha_provider_component_installer.cc:96] Captcha Providers Component ready, version 8.5419.4434 in /Users/brennan/Library/Caches/com.chromium.webview/CaptchaProviders/8.5419.4434
+[69832:2728279:0414/220424.302423:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Zxcvbn Data Dictionaries
+[69832:2728279:0414/220424.302429:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 3 in /Users/brennan/Library/Caches/com.chromium.webview/ZxcvbnData/3
+[69832:2728401:0414/220424.302455:VERBOSE1:chrome/browser/component_updater/captcha_provider_component_installer.cc:49] Reading Captcha Providers from file: /Users/brennan/Library/Caches/com.chromium.webview/CaptchaProviders/8.5419.4434/captcha_providers.json
+[69832:2728279:0414/220424.304161:VERBOSE1:chrome/browser/component_updater/widevine_cdm_component_installer.cc:94] Registering Widevine CDM 4.10.2934.0 with Chrome
+[69832:2728279:0414/220424.304272:VERBOSE1:components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.cc:480] Parsed Privacy Sandbox Attestation list version: 2025.6.16.0
+[69832:2728279:0414/220424.304279:VERBOSE1:components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.cc:482] Number of attestation entries: 265
+[69832:2728279:0414/220424.304327:VERBOSE1:chrome/browser/component_updater/captcha_provider_component_installer.cc:144] Received Captcha Providers.
+[69832:2728279:0414/220424.304814:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:262] Acquiring <PartitionedLockId>{id: 0x31, partition: 0} for Start@chrome/browser/web_applications/generated_icon_fix_manager.cc:62
+[69832:2728279:0414/220424.304822:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:243] All locks acquired for Start@chrome/browser/web_applications/generated_icon_fix_manager.cc:62
+[69832:2728397:0414/220424.304906:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Web Applications/Logs": No such file or directory (2)
+[69864:2728497:0414/220424.305115:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://google.com/
+[69832:2728279:0414/220424.305504:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:286] Releasing <PartitionedLockId>{id: 0x31, partition: 0} requested by Start@chrome/browser/web_applications/generated_icon_fix_manager.cc:62
+[69864:2728497:0414/220424.305934:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://accounts.google.com/ListAccounts?gpsia=1&source=ChromiumBrowser&json=standard&laf=b64bin
+[69864:2728497:0414/220424.306086:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://www.google.com/async/folae?async=_fmt:pb&client_locale=en-US
+[69832:2728379:0414/220424.307551:VERBOSE1:components/signin/public/webdata/token_service_table.cc:248] Loaded tokens: result = 3 ; number of tokens loaded = 0
+[69832:2728279:0414/220424.312143:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.312171:VERBOSE1:chrome/browser/signin/account_consistency_mode_manager.cc:207] Desktop Identity Consistency disabled as sign-in to Chrome is not allowed
+[69832:2728279:0414/220424.312863:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:569] MutablePO2TS::OnWebDataServiceRequestDone. Result type: 5
+[69832:2728279:0414/220424.312874:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:631] MutablePO2TS::LoadAllCredentialsIntoMemory; 0 credential(s).
+[69832:2728279:0414/220424.312903:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.312908:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.312911:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.312916:VERBOSE1:google_apis/gaia/gaia_auth_util.cc:53] Canonicalized @gmail.com to @gmail.com
+[69832:2728279:0414/220424.312920:VERBOSE1:google_apis/gaia/gaia_auth_util.cc:53] Canonicalized @gmail.com to @gmail.com
+[69832:2728279:0414/220424.312997:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.313011:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.313015:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69864:2728497:0414/220424.314020:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://www.google.com/
+[69832:2728279:0414/220424.314058:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Session.TotalDuration
+[69832:2728279:0414/220424.314072:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Commerce.PriceDrops.ActiveTabNavigationComplete.IsProductDetailPage
+[69832:2728279:0414/220424.314078:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing Autofill_PolledCreditCardSuggestions
+[69832:2728279:0414/220424.314106:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing IOS.ParcelTracking.Tracked.AutoTrack
+[69832:2728279:0414/220424.314110:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Omnibox.SuggestionUsed.ClientSummarizedResultType
+[69832:2728279:0414/220424.314118:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing MetadataWriter
+[69832:2728279:0414/220424.314123:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Sync.DeviceCount2
+[69832:2728279:0414/220424.314127:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Sync.DeviceCount2.Phone
+[69832:2728279:0414/220424.314131:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Sync.DeviceCount2.Desktop
+[69832:2728279:0414/220424.314135:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Sync.DeviceCount2.Tablet
+[69832:2728279:0414/220424.314137:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing MobileBookmarkManagerOpen
+[69832:2728279:0414/220424.314140:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing NewTabPage.MostVisited.Clicked
+[69832:2728279:0414/220424.314142:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing TabGroup.Created.OpenInNewTab
+[69832:2728279:0414/220424.314145:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing Android.HistoryPage.OpenItem
+[69832:2728279:0414/220424.314148:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:54] Segmentation platform started observing MobileMenuRecentTabs
+[69832:2728279:0414/220424.314150:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing PasswordManager.ManagePasswordsReferrer
+[69832:2728279:0414/220424.314153:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing PasswordManager.ProfileStore.TotalAccountsHiRes3.WithScheme.Https
+[69832:2728279:0414/220424.314156:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing PasswordManager.FillingAssistance
+[69832:2728279:0414/220424.314160:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing PasswordManager.SavedPasswordIsGenerated
+[69832:2728279:0414/220424.314162:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing PasswordManager.SaveUIDismissalReason
+[69832:2728279:0414/220424.314165:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing PasswordManager.SaveUIDismissalReason
+[69832:2728279:0414/220424.314168:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing IOS.CredentialExtension.IsEnabled.Startup
+[69832:2728279:0414/220424.314172:VERBOSE1:components/segmentation_platform/internal/signals/signal_filter_processor.cc:61] Segmentation platform started observing Session.TotalDuration
+[69864:2728502:0414/220424.314826:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Cache/Cache_Data/02322ee638ee99c2_1": No such file or directory (2)
+[69864:2728502:0414/220424.314986:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Cache/Cache_Data/02322ee638ee99c2_s": No such file or directory (2)
+[69832:2728279:0414/220424.514275:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:136] GetSegmentResult: segment=OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER ignoring DB score, executing model.
+[69832:2728279:0414/220424.514300:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER server segment info not available
+[69832:2728279:0414/220424.514310:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:210] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER failed to get database model score, trying default model.
+[69864:2728499:0414/220424.738144:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Cache/Cache_Data/59b7adbdbd563a05_0": No such file or directory (2)
+[69864:2728499:0414/220424.738382:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Cache/Cache_Data/59b7adbdbd563a05_1": No such file or directory (2)
+[69864:2728499:0414/220424.738404:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Cache/Cache_Data/59b7adbdbd563a05_s": No such file or directory (2)
+[69832:2728279:0414/220424.750705:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728279:0414/220424.756105:VERBOSE1:components/signin/internal/identity_manager/mutable_profile_oauth2_token_service_delegate.cc:422] MutablePO2TS::RefreshTokenIsAvailable
+[69832:2728669:0414/220424.757549:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/DeferredBrowserMetrics": No such file or directory (2)
+[69832:2728669:0414/220424.757593:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/CrashpadMetrics.pma": No such file or directory (2)
+[69832:2728279:0414/220424.757705:VERBOSE1:chrome/browser/profiles/profile_manager.cc:1376] AddKeepAlive(Default, kExtensionUpdater). keep_alives=[kExtensionUpdater (1), kProfileCreationFlow (1)]
+[69832:2728669:0414/220424.757767:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Breadcrumbs": No such file or directory (2)
+[69832:2728380:0414/220424.757776:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/Media Cache": No such file or directory (2)
+[69832:2728279:0414/220424.757810:VERBOSE1:chrome/browser/profiles/profile_manager.cc:1437] RemoveKeepAlive(Default, kExtensionUpdater). keep_alives=[kProfileCreationFlow (1)]
+[69832:2728380:0414/220424.757820:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/databases": No such file or directory (2)
+[69832:2728669:0414/220424.757864:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Default/webrtc_event_logs": No such file or directory (2)
+[69832:2728279:0414/220424.758038:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:262] Acquiring <PartitionedLockId>{id: 0x31, partition: 0} for SynchronizeInstalledApps@chrome/browser/web_applications/externally_managed_app_manager.cc:186
+[69832:2728279:0414/220424.758049:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:243] All locks acquired for SynchronizeInstalledApps@chrome/browser/web_applications/externally_managed_app_manager.cc:186
+[69832:2728279:0414/220424.758068:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:286] Releasing <PartitionedLockId>{id: 0x31, partition: 0} requested by SynchronizeInstalledApps@chrome/browser/web_applications/externally_managed_app_manager.cc:186
+[69832:2728671:0414/220424.761323:VERBOSE1:services/device/usb/usb_context.cc:51] UsbEventHandler started.
+[69832:2728279:0414/220424.762257:VERBOSE1:components/device_event_log/device_event_log_impl.cc:204] [22:04:24.762] USB: USER: usb_service_impl.cc:391 USB device added: vendor=1149 "", product=8257 "Kensington Slimblade Trackball", serial="", guid=3e5a9cb4-1eee-44f7-9cab-81df61b1b249
+[69832:2728669:0414/220424.762481:VERBOSE1:components/component_updater/component_installer.cc:477] StartRegistration for Related Website Sets
+[69832:2728279:0414/220424.762945:VERBOSE1:components/component_updater/component_installer.cc:556] FinishRegistration for Related Website Sets
+[69832:2728669:0414/220424.762960:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/HistorySearch": No such file or directory (2)
+[69832:2728279:0414/220424.762969:VERBOSE1:components/component_updater/component_installer.cc:597] Component ready, version 2025.7.24.0 in /Users/brennan/Library/Caches/com.chromium.webview/FirstPartySetsPreloaded/2025.7.24.0
+[69832:2728279:0414/220424.763008:VERBOSE1:components/component_updater/installer_policies/first_party_sets_component_installer_policy.cc:144] Related Website Sets Component ready, version 2025.7.24.0 in /Users/brennan/Library/Caches/com.chromium.webview/FirstPartySetsPreloaded/2025.7.24.0
+[69832:2728669:0414/220424.763012:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/MaskedDomainListPreloaded": No such file or directory (2)
+[69832:2728669:0414/220424.763036:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/DesktopSharingHub": No such file or directory (2)
+[69832:2728669:0414/220424.763051:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/CookieReadinessList": No such file or directory (2)
+[69832:2728669:0414/220424.763066:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/OpenCookieDatabase": No such file or directory (2)
+[69832:2728669:0414/220424.763080:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/TpcdMetadata": No such file or directory (2)
+[69832:2728669:0414/220424.763092:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/ProbabilisticRevealTokenRegistry": No such file or directory (2)
+[69832:2728669:0414/220424.763104:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/AutofillStates": No such file or directory (2)
+[69832:2728669:0414/220424.763116:VERBOSE1:base/files/file_util_posix.cc:309] Cannot stat "/Users/brennan/Library/Caches/com.chromium.webview/Fingerprinting Protection Filter": No such file or directory (2)
+[69832:2728380:0414/220424.779091:VERBOSE1:chrome/browser/component_updater/file_type_policies_component_installer.cc:43] Reading Download File Types from file: /Users/brennan/Library/Caches/com.chromium.webview/FileTypePolicies/145.0.7584.0/download_file_types.pb
+[69832:2728380:0414/220424.781624:VERBOSE1:components/component_updater/installer_policies/trust_token_key_commitments_component_installer_policy.cc:46] Reading trust token key commitments from file: /Users/brennan/Library/Caches/com.chromium.webview/TrustTokenKeyCommitments/2026.3.23.1/keys.json
+[69864:2728497:0414/220424.781978:VERBOSE1:services/network/trust_tokens/trust_token_key_commitment_parser.cc:241] Successfully parsed 7 issuers' Trust Tokens key commitments.
+[69832:2728380:0414/220424.785278:VERBOSE1:chrome/browser/component_updater/actor_safety_lists_component_installer.cc:46] Reading Actor Safety Lists data from file: /Users/brennan/Library/Caches/com.chromium.webview/ActorSafetyLists/8.6294.2057/listdata.json
+[69832:2728279:0414/220424.794700:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:262] Acquiring <PartitionedLockId>{id: 0x31, partition: 0} for SynchronizeInstalledApps@chrome/browser/web_applications/externally_managed_app_manager.cc:186
+[69832:2728279:0414/220424.794727:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:243] All locks acquired for SynchronizeInstalledApps@chrome/browser/web_applications/externally_managed_app_manager.cc:186
+[69832:2728279:0414/220424.794746:VERBOSE1:chrome/browser/web_applications/locks/partitioned_lock_manager.cc:286] Releasing <PartitionedLockId>{id: 0x31, partition: 0} requested by SynchronizeInstalledApps@chrome/browser/web_applications/externally_managed_app_manager.cc:186
+[69832:2728279:0414/220424.797467:VERBOSE1:chrome/browser/component_updater/first_party_sets_component_installer.cc:42] Received Related Website Sets
+[69832:2728279:0414/220429.314350:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT does not have a segment info.
+[69832:2728279:0414/220429.318401:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318428:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT server segment info not available
+[69832:2728279:0414/220429.318437:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318443:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:240] GetCachedModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT has expired or unavailable result.
+[69832:2728279:0414/220429.318447:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:210] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT failed to get database model score, trying default model.
+[69832:2728279:0414/220429.318453:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:295] ExecuteModelAndGetScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT signal collection not met
+[69832:2728279:0414/220429.318485:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER does not have a segment info.
+[69832:2728279:0414/220429.318493:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318497:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER server segment info not available
+[69832:2728279:0414/220429.318501:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318507:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:240] GetCachedModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER has expired or unavailable result.
+[69832:2728279:0414/220429.318623:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:210] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER failed to get database model score, trying default model.
+[69832:2728279:0414/220429.318633:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:295] ExecuteModelAndGetScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER signal collection not met
+[69832:2728279:0414/220429.318638:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SHOPPING_USER does not have a segment info.
+[69832:2728279:0414/220429.318642:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SHOPPING_USER failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318645:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SHOPPING_USER server segment info not available
+[69832:2728279:0414/220429.318649:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=OPTIMIZATION_TARGET_SEGMENTATION_SHOPPING_USER failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318653:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:252] GetCachedModelScore: Retrieved prediction from database: PredictionResult: timestamp: 13420697779714957 result 0: 0 for segment OPTIMIZATION_TARGET_SEGMENTATION_SHOPPING_USER
+[69832:2728279:0414/220429.318670:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:29] ComputeDiscreteMapping: segment=: result=0, rank=0
+[69832:2728279:0414/220429.318678:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=CROSS_DEVICE_USER_SEGMENT does not have a segment info.
+[69832:2728279:0414/220429.318682:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=CROSS_DEVICE_USER_SEGMENT failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318686:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=CROSS_DEVICE_USER_SEGMENT server segment info not available
+[69832:2728279:0414/220429.318689:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=CROSS_DEVICE_USER_SEGMENT failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318693:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:252] GetCachedModelScore: Retrieved prediction from database: PredictionResult: timestamp: 13420697779714637 result 0: 1 for segment CROSS_DEVICE_USER_SEGMENT
+[69832:2728279:0414/220429.318701:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:29] ComputeDiscreteMapping: segment=: result=1, rank=1
+[69832:2728279:0414/220429.318706:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=RESUME_HEAVY_USER_SEGMENT does not have a segment info.
+[69832:2728279:0414/220429.318709:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=RESUME_HEAVY_USER_SEGMENT failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318712:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=RESUME_HEAVY_USER_SEGMENT server segment info not available
+[69832:2728279:0414/220429.318716:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=RESUME_HEAVY_USER_SEGMENT failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318779:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:240] GetCachedModelScore: segment=RESUME_HEAVY_USER_SEGMENT has expired or unavailable result.
+[69832:2728279:0414/220429.318784:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:210] OnGotModelScore: segment=RESUME_HEAVY_USER_SEGMENT failed to get database model score, trying default model.
+[69832:2728279:0414/220429.318791:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:295] ExecuteModelAndGetScore: segment=RESUME_HEAVY_USER_SEGMENT signal collection not met
+[69832:2728279:0414/220429.318795:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=PASSWORD_MANAGER_USER does not have a segment info.
+[69832:2728279:0414/220429.318799:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=PASSWORD_MANAGER_USER failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318809:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=PASSWORD_MANAGER_USER server segment info not available
+[69832:2728279:0414/220429.318815:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=PASSWORD_MANAGER_USER failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318818:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:240] GetCachedModelScore: segment=PASSWORD_MANAGER_USER has expired or unavailable result.
+[69832:2728279:0414/220429.318822:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:210] OnGotModelScore: segment=PASSWORD_MANAGER_USER failed to get database model score, trying default model.
+[69832:2728279:0414/220429.318830:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:295] ExecuteModelAndGetScore: segment=PASSWORD_MANAGER_USER signal collection not met
+[69832:2728279:0414/220429.318834:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:226] GetCachedModelScore: segment=CHROME_USER_ENGAGEMENT does not have a segment info.
+[69832:2728279:0414/220429.318840:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:172] OnGotModelScore: segment=CHROME_USER_ENGAGEMENT failed to get score from database, executing server model.
+[69832:2728279:0414/220429.318844:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:277] ExecuteModelAndGetScore: segment=CHROME_USER_ENGAGEMENT server segment info not available
+[69832:2728279:0414/220429.318849:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:201] OnGotModelScore: segment=CHROME_USER_ENGAGEMENT failed to get score from executing server model, getting score from default model from db.
+[69832:2728279:0414/220429.318853:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:240] GetCachedModelScore: segment=CHROME_USER_ENGAGEMENT has expired or unavailable result.
+[69832:2728279:0414/220429.318859:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:210] OnGotModelScore: segment=CHROME_USER_ENGAGEMENT failed to get database model score, trying default model.
+[69832:2728279:0414/220429.318866:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:295] ExecuteModelAndGetScore: segment=CHROME_USER_ENGAGEMENT signal collection not met
+[69832:2728279:0414/220429.318905:VERBOSE1:components/segmentation_platform/internal/database/cached_result_writer.cc:106] IsPrefUpdateRequiredForClient: previous client_result for segmentation_key: shopping_user has not yet expired. Expiration: 2026-04-16 02:56:33.411731 UTC
+[69832:2728279:0414/220429.318965:VERBOSE1:components/segmentation_platform/internal/database/cached_result_writer.cc:106] IsPrefUpdateRequiredForClient: previous client_result for segmentation_key: cross_device_user has not yet expired. Expiration: 2026-04-22 03:36:19.715109 UTC
+[69864:2728497:0414/220524.304679:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://update.googleapis.com/service/update2/json?cup2key=15:KVMvu9n7UwJ8YaEChRJYYswQ-62GG1M8U0WdU8E0V_g&cup2hreq=4fb9384232a3abb3b6bb129f0af626e88bc6d47380160650385b06af910c6ac2
+[69832:2728279:0414/220524.515594:VERBOSE1:components/segmentation_platform/internal/execution/model_executor_impl.cc:189] Segmentation model input:  feature 0: 1 feature 1: 0 feature 2: 0 feature 3: 0 feature 4: 0 feature 5: 0 feature 6: 0 feature 7: 0 feature 8: 0 feature 9: 0 for segment OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER
+[69832:2728279:0414/220524.515769:VERBOSE1:components/segmentation_platform/internal/execution/model_executor_impl.cc:218] Segmentation model result:  output 0: 0 output 1: 0 output 2: 0 output 3: 0 output 4: 0 output 5: 0 output 6: 0 output 7: 1 for segment OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER
+[69832:2728279:0414/220524.515908:VERBOSE1:components/segmentation_platform/internal/execution/model_executor_impl.cc:276] Model: OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER version: 1 execution status: 0, output size: 8
+[69832:2728279:0414/220524.515987:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:29] ComputeDiscreteMapping: segment=: result=0, rank=0
+[69832:2728279:0414/220524.516002:VERBOSE1:components/segmentation_platform/internal/selection/segment_result_provider.cc:359] OnModelExecuted: Default model executed successfully. Result: PredictionResult: timestamp: 13420703124515960 result 0: 0 result 1: 0 result 2: 0 result 3: 0 result 4: 0 result 5: 0 result 6: 0 result 7: 1 for segment OPTIMIZATION_TARGET_SEGMENTATION_DEVICE_SWITCHER
+[69832:2728279:0414/220524.516076:VERBOSE1:components/segmentation_platform/internal/selection/request_dispatcher.cc:147] Computed result for device_switcher: Status: Succeeded output 0: NotSynced
+[69832:2728279:0414/220524.675924:VERBOSE1:components/update_client/request_sender.cc:188] Request completed from url: https://update.googleapis.com/service/update2/json?cup2key=15:KVMvu9n7UwJ8YaEChRJYYswQ-62GG1M8U0WdU8E0V_g&cup2hreq=4fb9384232a3abb3b6bb129f0af626e88bc6d47380160650385b06af910c6ac2
+[69832:2728279:0414/220524.677045:VERBOSE1:components/component_updater/component_updater_service.cc:477] Update completed with error 0
+
+--- Running Processes ---
+
+Main app process:
+brennan          69832   0.7  0.5 493730192 165808   ??  SN   10:04PM   0:01.46 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/MacOS/WebView
+brennan          49716   0.6  0.3 1899870176 110240   ??  S     8:09PM   0:41.05 Cursor Helper (Plugin): extension-host (retrieval) CEFWebView [1-2]                      
+brennan          49712   0.6  0.2 1916254928  79440   ??  S     8:09PM   0:34.76 Cursor Helper (Plugin): extension-host (user) CEFWebView [1-1]                      
+brennan          49718   0.6  0.2 1899498640  70544   ??  S     8:09PM   0:32.90 Cursor Helper (Plugin): extension-host (agent-exec) CEFWebView [1-4]                      
+brennan          49717   0.5  0.3 1899386688 106576   ??  S     8:09PM   0:53.24 Cursor Helper (Plugin): extension-host (always-local) CEFWebView [1-3]                      
+brennan          71616   0.0  0.0 442205152   3232   ??  Ss   10:05PM   0:00.01 /bin/zsh -c source /Users/brennan/.claude/shell-snapshots/snapshot-zsh-1776216724859-25cynx.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB 2>/dev/null || true && eval 'cd /Users/brennan/Developer/brennanMKE/CEFWebView\012open /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app 2>&1 &\012sleep 5\012./capture_logs.sh' < /dev/null && pwd -P >| /tmp/claude-5814-cwd
+brennan          69865   0.0  0.1 493078592  31568   ??  SN   10:04PM   0:00.04 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/WebView Helper.app/Contents/MacOS/WebView Helper --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=service --no-sandbox --disable-quic --user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Safari/537.36 --user-data-dir=/Users/brennan/Library/Caches/com.chromium.webview --framework-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework --main-bundle-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app --log-severity=verbose --resources-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework/Versions/A/Resources --shared-files --metrics-shmem-handle=1752395122,r,8126542492634663067,16149110747250594266,524288 --field-trial-handle=1718379636,r,3131723127263063693,12530804846533896173,262144 --disable-features=AutofillActorMode,GlicActorUi,LensOverlay --variations-seed-version --pseudonymization-salt-handle=1935764596,r,6363038597265427839,13285288240587032763,4 --trace-process-track-uuid=3190708990060038890 --log-file=/Users/brennan/Library/Caches/com.chromium.webview/debug.log
+brennan          69864   0.0  0.1 493149104  45600   ??  SN   10:04PM   0:00.13 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/WebView Helper.app/Contents/MacOS/WebView Helper --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=network --no-sandbox --disable-quic --user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Safari/537.36 --start-stack-profiler --user-data-dir=/Users/brennan/Library/Caches/com.chromium.webview --framework-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework --main-bundle-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app --log-severity=verbose --resources-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework/Versions/A/Resources --shared-files --metrics-shmem-handle=1752395122,r,4200998322133368282,12440227737724574872,524288 --field-trial-handle=1718379636,r,3131723127263063693,12530804846533896173,262144 --disable-features=AutofillActorMode,GlicActorUi,LensOverlay --variations-seed-version --pseudonymization-salt-handle=1935764596,r,6363038597265427839,13285288240587032763,4 --trace-process-track-uuid=3190708989122997041 --log-file=/Users/brennan/Library/Caches/com.chromium.webview/debug.log
+brennan          69863   0.0  0.1 493159872  38144   ??  SN   10:04PM   0:00.14 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/WebView Helper.app/Contents/MacOS/WebView Helper --type=gpu-process --disable-gpu-sandbox --no-sandbox --user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Safari/537.36 --start-stack-profiler --user-data-dir=/Users/brennan/Library/Caches/com.chromium.webview --framework-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework --main-bundle-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app --log-severity=verbose --resources-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework/Versions/A/Resources --gpu-preferences=SAAAAAAAAAAgAQAEAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAA== --use-gl=disabled --shared-files --metrics-shmem-handle=1752395122,r,153319940688930281,3322423633979557711,262144 --field-trial-handle=1718379636,r,3131723127263063693,12530804846533896173,262144 --disable-features=AutofillActorMode,GlicActorUi,LensOverlay --variations-seed-version --pseudonymization-salt-handle=1935764596,r,6363038597265427839,13285288240587032763,4 --trace-process-track-uuid=3190708988185955192 --log-file=/Users/brennan/Library/Caches/com.chromium.webview/debug.log
+
+CEF helper processes:
+  (none found)
+
+==========================================
+End of Logs
+==========================================

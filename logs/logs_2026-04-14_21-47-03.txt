@@ -1,0 +1,39 @@
+==========================================
+WebView App Logs - Captured at: Tue Apr 14 21:47:03 PDT 2026
+Bundle ID: co.sstools.WebView
+==========================================
+
+--- Swift Logger + NSLog (Main App - CEFWebView subsystem) ---
+
+Timestamp                       Thread     Type        Activity             PID    TTL  
+2026-04-14 21:46:47.330900-0700 0x2856e8   Debug       0x0                  43179  0    WebView: (WebView.debug.dylib) [co.sstools.CEFWebView:CEFApplication] handleSubprocessIfNeeded called
+2026-04-14 21:46:47.331346-0700 0x2856e8   Debug       0x0                  43179  0    WebView: (WebView.debug.dylib) [co.sstools.CEFWebView:CEFApplication] CefExecuteProcess returned exitCode=-1
+2026-04-14 21:46:47.331351-0700 0x2856e8   Debug       0x0                  43179  0    WebView: (WebView.debug.dylib) [co.sstools.CEFWebView:CEFApplication] This is the main browser process, continuing startup
+
+--- System Logs (All App-Related Processes) ---
+
+Timestamp                       Thread     Type        Activity             PID    TTL  
+
+--- CEF Debug Log (if available) ---
+
+⚠️  Cache directory not found: /Users/brennan/Library/Caches/co.sstools.WebView
+    The app may not have run yet.
+
+--- Running Processes ---
+
+Main app process:
+brennan          43179   0.7  0.7 494727664 227840   ??  SX    9:46PM   0:01.63 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/MacOS/WebView -NSDocumentRevisionsDebugMode YES
+brennan          49717   0.4  0.3 1899386240 100784   ??  S     8:09PM   0:43.25 Cursor Helper (Plugin): extension-host (always-local) CEFWebView [1-3]                      
+brennan          49718   0.4  0.2 1899498240  63840   ??  S     8:09PM   0:25.00 Cursor Helper (Plugin): extension-host (agent-exec) CEFWebView [1-4]                      
+brennan          49712   0.4  0.3 1917962224  94144   ??  S     8:09PM   0:27.02 Cursor Helper (Plugin): extension-host (user) CEFWebView [1-1]                      
+brennan          49716   0.4  0.2 1899869776  82656   ??  S     8:09PM   0:32.28 Cursor Helper (Plugin): extension-host (retrieval) CEFWebView [1-2]                      
+brennan          43320   0.1  0.1 493174752  43648   ??  S     9:46PM   0:00.09 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/WebView Helper.app/Contents/MacOS/WebView Helper --type=gpu-process --disable-gpu-sandbox --no-sandbox --user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Safari/537.36 --start-stack-profiler --user-data-dir=/Users/brennan/Library/Caches/com.chromium.webview --framework-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework --main-bundle-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app --log-severity=verbose --resources-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework/Versions/A/Resources --gpu-preferences=SAAAAAAAAAAgAQAEAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAA== --use-gl=disabled --shared-files --metrics-shmem-handle=1752395122,r,15898473640345879026,10315836161146874223,262144 --field-trial-handle=1718379636,r,9695211843511638760,12870164818343208787,262144 --disable-features=AutofillActorMode,GlicActorUi,LensOverlay --variations-seed-version --pseudonymization-salt-handle=1935764596,r,2587449045433567218,7026890201612346766,4 --trace-process-track-uuid=3190708988185955192 --log-file=/Users/brennan/Library/Caches/com.chromium.webview/debug.log
+brennan          43323   0.0  0.1 493070320  35952   ??  S     9:46PM   0:00.02 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/WebView Helper.app/Contents/MacOS/WebView Helper --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=service --no-sandbox --disable-quic --user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Safari/537.36 --user-data-dir=/Users/brennan/Library/Caches/com.chromium.webview --framework-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework --main-bundle-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app --log-severity=verbose --resources-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework/Versions/A/Resources --shared-files --metrics-shmem-handle=1752395122,r,7916197653503566743,12839483542449782937,524288 --field-trial-handle=1718379636,r,9695211843511638760,12870164818343208787,262144 --disable-features=AutofillActorMode,GlicActorUi,LensOverlay --variations-seed-version --pseudonymization-salt-handle=1935764596,r,2587449045433567218,7026890201612346766,4 --trace-process-track-uuid=3190708990060038890 --log-file=/Users/brennan/Library/Caches/com.chromium.webview/debug.log
+brennan          43321   0.0  0.1 493161104  48208   ??  S     9:46PM   0:00.09 /Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/WebView Helper.app/Contents/MacOS/WebView Helper --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=network --no-sandbox --disable-quic --user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Safari/537.36 --start-stack-profiler --user-data-dir=/Users/brennan/Library/Caches/com.chromium.webview --framework-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework --main-bundle-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app --log-severity=verbose --resources-dir-path=/Users/brennan/Library/Developer/Xcode/DerivedData/WebView-dtdbutdcogtogbchrtzecfirgvwn/Build/Products/Debug/WebView.app/Contents/Frameworks/Chromium Embedded Framework.framework/Versions/A/Resources --shared-files --metrics-shmem-handle=1752395122,r,11383012609631654409,16490748403969935224,524288 --field-trial-handle=1718379636,r,9695211843511638760,12870164818343208787,262144 --disable-features=AutofillActorMode,GlicActorUi,LensOverlay --variations-seed-version --pseudonymization-salt-handle=1935764596,r,2587449045433567218,7026890201612346766,4 --trace-process-track-uuid=3190708989122997041 --log-file=/Users/brennan/Library/Caches/com.chromium.webview/debug.log
+
+CEF helper processes:
+  (none found)
+
+==========================================
+End of Logs
+==========================================

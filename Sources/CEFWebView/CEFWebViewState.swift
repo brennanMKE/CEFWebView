@@ -11,6 +11,8 @@ public final class CEFWebViewState {
     public var currentURL: URL?
     public var canGoBack: Bool = false
     public var canGoForward: Bool = false
+    /// Error message if CEF initialization or browser creation failed. Non-nil indicates a critical failure.
+    public var initializationError: String?
 
     private weak var browserHost: CEFBrowserHost?
 

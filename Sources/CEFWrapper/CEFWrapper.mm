@@ -7,12 +7,66 @@
 
 #import "include/CEFWrapper.h"
 
+#import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
+#import <dispatch/dispatch.h>
+
+#include <cstring>
+
 #include "include/cef_app.h"
 #include "include/cef_browser.h"
 #include "include/cef_client.h"
 #include "include/cef_load_handler.h"
 #include "include/cef_display_handler.h"
+#include "include/cef_version.h"
 #include "include/wrapper/cef_library_loader.h"
+
+// ─── CEF App: command-line switches applied in every process ───────────────────
+//
+// macOS often fails to spawn the GPU process (error 1003) under the default app
+// configuration (Hardened Runtime / Mach limits), then Chromium aborts with
+// "GPU process isn't usable". Disabling GPU forces software rendering and avoids
+// that subprocess. Pass the same CefApp to CefExecuteProcess and CefInitialize.
+
+namespace {
+
+class CEFWebViewApp final : public CefApp, public CefBrowserProcessHandler {
+public:
+    CEFWebViewApp() = default;
+
+    void OnBeforeCommandLineProcessing(const CefString& process_type,
+                                       CefRefPtr<CefCommandLine> command_line) override {
+        // Disable GPU to avoid process launch failures under Hardened Runtime / Mach limits
+        command_line->AppendSwitch("disable-gpu");
+        // Do NOT disable gpu-compositing — it can break renderer rendering
+        command_line->AppendSwitch("disable-gpu-sandbox");
+        // QUIC / HTTP3 can complicate loads on some networks
+        command_line->AppendSwitch("disable-quic");
+    }
+
+    /// Required when using external_message_pump + CefDoMessageLoopWork; without this, renderer IPC
+    /// is not serviced promptly and navigations fail with ERR_ABORTED / blank views.
+    void OnScheduleMessagePumpWork(int64_t delay_ms) override {
+        NSLog(@"⏰ OnScheduleMessagePumpWork: delay_ms=%lld", delay_ms);
+        if (delay_ms <= 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                CefDoMessageLoopWork();
+            });
+        } else {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay_ms * NSEC_PER_MSEC),
+                           dispatch_get_main_queue(), ^{
+                CefDoMessageLoopWork();
+            });
+        }
+    }
+
+    CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
+
+private:
+    IMPLEMENT_REFCOUNTING(CEFWebViewApp);
+};
+
+}  // namespace
 
 // ─── C++ Client Class ───────────────────────────────────────────────────────────
 //
@@ -22,7 +76,8 @@
 
 class ChromiumClient : public CefClient,
                        public CefLoadHandler,
-                       public CefDisplayHandler {
+                       public CefDisplayHandler,
+                       public CefRequestHandler {
 public:
     // CefClient overrides
     CefRefPtr<CefLoadHandler> GetLoadHandler() override {
@@ -31,6 +86,23 @@ public:
 
     CefRefPtr<CefDisplayHandler> GetDisplayHandler() override {
         return this;
+    }
+
+    CefRefPtr<CefRequestHandler> GetRequestHandler() override {
+        return this;
+    }
+
+    // CefRequestHandler overrides
+    bool OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
+                        CefRefPtr<CefFrame> frame,
+                        CefRefPtr<CefRequest> request,
+                        bool user_gesture,
+                        bool is_redirect) override {
+        NSLog(@"🧭 OnBeforeBrowse: isMain=%s user_gesture=%d is_redirect=%d",
+              frame->IsMain() ? "YES" : "NO",
+              user_gesture,
+              is_redirect);
+        return false;  // Don't cancel the navigation
     }
 
     // CefLoadHandler overrides
@@ -65,10 +137,20 @@ public:
                      ErrorCode errorCode,
                      const CefString& errorText,
                      const CefString& failedUrl) override {
-        NSLog(@"❌ OnLoadError: url=%s error=%d text=%s",
+        // Subframe failures (ads, trackers, blocked embeds) often report ERR_ABORTED for URLs that
+        // look like the top document; only treat main-frame errors as document load failures.
+        if (!frame->IsMain()) {
+            return;
+        }
+        NSLog(@"❌ OnLoadError (main frame): url=%s error=%d text=%s",
               failedUrl.ToString().c_str(),
               errorCode,
               errorText.ToString().c_str());
+    }
+
+    void OnRenderProcessTerminated(CefRefPtr<CefBrowser> browser,
+                                   TerminationStatus status) {
+        NSLog(@"💥 OnRenderProcessTerminated: status=%d", (int)status);
     }
 
     // CefDisplayHandler overrides
@@ -114,13 +196,57 @@ static BOOL g_cefInitialized = NO;
 static CefRefPtr<CefBrowser> g_browser;
 static CefRefPtr<ChromiumClient> g_client;
 
+/// Single loader per process. On macOS, main browser must call LoadInMain(); CEF helper
+/// subprocesses (same binary, `--type=...`) must call LoadInHelper() — see cef_library_loader.h.
+static CefScopedLibraryLoader g_cefLibraryLoader;
+
+/// CefScopedLibraryLoader does not allow calling LoadInMain/LoadInHelper twice; the second
+/// call fails. We load once in executeSubprocessWithArgc, then initializeCEFWithError must skip.
+static BOOL g_cefFrameworkDylibLoaded = NO;
+
+static bool CEFIsHelperProcess(int argc, char **argv) {
+    for (int i = 1; i < argc; i++) {
+        const char *a = argv[i];
+        if (a && std::strncmp(a, "--type=", 7) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// |isHelperProcess|: YES → LoadInHelper(), NO → LoadInMain(). Ignored if already loaded.
+static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
+    if (g_cefFrameworkDylibLoaded) {
+        return YES;
+    }
+    const bool ok = isHelperProcess ? g_cefLibraryLoader.LoadInHelper() : g_cefLibraryLoader.LoadInMain();
+    if (!ok) {
+        NSLog(@"❌ Failed to load Chromium Embedded Framework (%s process)",
+              isHelperProcess ? "helper" : "main");
+        if (error) {
+            *error = [NSError errorWithDomain:@"CEFWrapper"
+                                         code:2
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to load Chromium Embedded Framework"}];
+        }
+        return NO;
+    }
+    g_cefFrameworkDylibLoaded = YES;
+    return YES;
+}
+
 // ─── CEFWrapper Implementation ───────────────────────────────────────────────────
 
 @implementation CEFWrapper
 
 + (int)executeSubprocessWithArgc:(int)argc argv:(char **)argv {
+    // Without loading the framework first, CefExecuteProcess jumps through a null stub (crash at 0x0).
+    // Helper subprocesses must use LoadInHelper(), not LoadInMain() — see CEF cef_library_loader.h.
+    if (!EnsureCEFFrameworkLoaded(CEFIsHelperProcess(argc, argv) ? YES : NO, nil)) {
+        return 1;
+    }
     CefMainArgs args(argc, argv);
-    return CefExecuteProcess(args, nullptr, nullptr);
+    CefRefPtr<CefApp> app = new CEFWebViewApp();
+    return CefExecuteProcess(args, app, nullptr);
 }
 
 + (BOOL)initializeCEFWithError:(NSError **)error {
@@ -129,17 +255,9 @@ static CefRefPtr<ChromiumClient> g_client;
         return YES;
     }
 
-    // The CEF C++ API uses stubs — all function pointers are null until the
-    // framework is explicitly loaded via dlopen. LoadInMain() finds the framework
-    // in the app bundle's Frameworks directory and populates the stubs.
-    static CefScopedLibraryLoader library_loader;
-    if (!library_loader.LoadInMain()) {
-        NSLog(@"❌ Failed to load Chromium Embedded Framework");
-        if (error) {
-            *error = [NSError errorWithDomain:@"CEFWrapper"
-                                        code:2
-                                    userInfo:@{NSLocalizedDescriptionKey: @"Failed to load Chromium Embedded Framework"}];
-        }
+    // Browser process only (helpers never reach initializeCEF). Framework was already loaded
+    // in executeSubprocessWithArgc — EnsureCEFFrameworkLoaded skips the second load.
+    if (!EnsureCEFFrameworkLoaded(NO, error)) {
         return NO;
     }
     NSLog(@"✓ Chromium Embedded Framework loaded");
@@ -148,9 +266,98 @@ static CefRefPtr<ChromiumClient> g_client;
     CefSettings settings;
     settings.no_sandbox = 1;
     settings.external_message_pump = 1;
-    // Leave browser_subprocess_path empty — this tells CEF to use the main app executable
-    // for all subprocess roles (renderer, GPU, utility, network). CefExecuteProcess() at
-    // app startup will detect subprocess roles and handle them accordingly.
+
+#if TARGET_OS_OSX
+    // macOS: set absolute path to the generic helper (see WebView/Scripts/embed_cef_helpers.sh).
+    NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+    NSLog(@"🔍 Main bundle path: %@", bundlePath);
+    NSString *frameworksDir = [bundlePath stringByAppendingPathComponent:@"Contents/Frameworks"];
+    NSLog(@"🔍 Frameworks dir: %@", frameworksDir);
+
+    // HARD FAIL: CEF framework must exist
+    NSString *cefFrameworkPath =
+        [frameworksDir stringByAppendingPathComponent:@"Chromium Embedded Framework.framework"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:cefFrameworkPath]) {
+        NSString *errorMsg = [NSString stringWithFormat:
+            @"CEF framework not found at %@. This is a critical initialization failure. "
+            @"Verify the Chromium Embedded Framework is properly embedded in the app bundle.",
+            cefFrameworkPath];
+        NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
+        if (error) {
+            *error = [NSError errorWithDomain:@"CEFWrapper"
+                                         code:3
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+    CefString(&settings.framework_dir_path).FromString([cefFrameworkPath UTF8String]);
+    NSLog(@"✅ CEF framework verified at: %@", cefFrameworkPath);
+
+    // HARD FAIL: CEF resources (icudtl.dat, *.pak files) must exist
+    NSString *cefResourcesPath = [cefFrameworkPath stringByAppendingPathComponent:@"Resources"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:cefResourcesPath]) {
+        NSString *errorMsg = [NSString stringWithFormat:
+            @"CEF resources not found at %@. This is a critical initialization failure. "
+            @"Without these resources, page navigation will abort with ERR_ABORTED.",
+            cefResourcesPath];
+        NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
+        if (error) {
+            *error = [NSError errorWithDomain:@"CEFWrapper"
+                                         code:4
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+    CefString(&settings.resources_dir_path).FromString([cefResourcesPath UTF8String]);
+    NSLog(@"✅ CEF resources verified at: %@", cefResourcesPath);
+
+    CefString(&settings.main_bundle_path).FromString([bundlePath UTF8String]);
+
+    NSString *ua = [NSString stringWithFormat:
+        @"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+        @"Chrome/%d.%d.%d.%d Safari/537.36",
+        CHROME_VERSION_MAJOR, CHROME_VERSION_MINOR, CHROME_VERSION_BUILD, CHROME_VERSION_PATCH];
+    CefString(&settings.user_agent).FromString([ua UTF8String]);
+
+    // HARD FAIL: WebView Helper executable must exist and be executable
+    NSString *helperExe = [frameworksDir stringByAppendingPathComponent:
+        @"WebView Helper.app/Contents/MacOS/WebView Helper"];
+    NSLog(@"🔍 Checking helper at: %@", helperExe);
+
+    if (![[NSFileManager defaultManager] fileExistsAtPath:helperExe]) {
+        NSString *errorMsg = [NSString stringWithFormat:
+            @"WebView Helper executable not found at %@. This is a critical initialization failure. "
+            @"Run the 'embed_cef_helpers' build phase or execute 'swift build' to build helpers.",
+            helperExe];
+        NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
+        if (error) {
+            *error = [NSError errorWithDomain:@"CEFWrapper"
+                                         code:5
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+    NSLog(@"✅ Helper executable exists at: %@", helperExe);
+
+    if (![[NSFileManager defaultManager] isExecutableFileAtPath:helperExe]) {
+        NSString *errorMsg = [NSString stringWithFormat:
+            @"WebView Helper at %@ exists but is not executable. This is a critical initialization failure. "
+            @"The helper may lack proper code signing or JIT entitlements. "
+            @"Rebuild with 'swift build' and ensure the embed_cef_helpers build phase runs.",
+            helperExe];
+        NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
+        if (error) {
+            *error = [NSError errorWithDomain:@"CEFWrapper"
+                                         code:6
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+    NSLog(@"✅ Helper is executable");
+
+    CefString(&settings.browser_subprocess_path).FromString([helperExe UTF8String]);
+    NSLog(@"✅ CEF browser_subprocess_path configured: %@", helperExe);
+#endif
 
     // Enable verbose CEF logging to debug page rendering issues
     settings.log_severity = LOGSEVERITY_VERBOSE;
@@ -158,27 +365,46 @@ static CefRefPtr<ChromiumClient> g_client;
     if (cacheDir) {
         NSString* logPath = [cacheDir stringByAppendingPathComponent:@"com.chromium.webview/debug.log"];
         CefString(&settings.log_file).FromString([logPath UTF8String]);
-        NSLog(@"🔧 CEF debug log: %@", logPath);
+        NSLog(@"✅ CEF debug log configured at: %@", logPath);
     }
 
     // Set cache path to avoid singleton behavior warnings
     if (cacheDir) {
         cacheDir = [cacheDir stringByAppendingPathComponent:@"com.chromium.webview"];
         CefString(&settings.root_cache_path).FromString([cacheDir UTF8String]);
+        NSLog(@"✅ CEF cache path configured at: %@", cacheDir);
     }
 
-    NSLog(@"🔧 Calling CefInitialize with cache dir: %@", cacheDir);
-    if (!CefInitialize(args, settings, nullptr, nullptr)) {
-        NSLog(@"❌ CefInitialize failed");
+    NSLog(@"🔧 ========================================");
+    NSLog(@"🔧 CEF Initialization Settings:");
+    NSLog(@"🔧   no_sandbox: %d", settings.no_sandbox);
+    NSLog(@"🔧   external_message_pump: %d", settings.external_message_pump);
+    NSLog(@"🔧   browser_subprocess_path: %s", settings.browser_subprocess_path.str);
+    NSLog(@"🔧   resources_dir_path: %s", settings.resources_dir_path.str);
+    NSLog(@"🔧 ========================================");
+
+    CefRefPtr<CefApp> app = new CEFWebViewApp();
+    NSLog(@"🔧 Calling CefInitialize...");
+    bool initResult = CefInitialize(args, settings, app, nullptr);
+    NSLog(@"🔧 CefInitialize returned: %s", initResult ? "true" : "false");
+
+    if (!initResult) {
+        NSString *errorMsg = [NSString stringWithFormat:
+            @"CefInitialize failed. This is a critical initialization failure. "
+            @"Check the CEF debug log at %@/com.chromium.webview/debug.log for details. "
+            @"Common causes: missing/invalid helper executable, resource file (icudtl.dat) not found, "
+            @"framework path configuration error, or renderer subprocess initialization failure.",
+            cacheDir ?: @"~/Library/Caches"];
+        NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
         if (error) {
             *error = [NSError errorWithDomain:@"CEFWrapper"
                                         code:1
-                                    userInfo:@{NSLocalizedDescriptionKey: @"CefInitialize failed"}];
+                                    userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
         }
         return NO;
     }
 
-    NSLog(@"✓ CefInitialize succeeded");
+    NSLog(@"✅ CefInitialize succeeded - CEF is now initialized and ready");
     g_cefInitialized = YES;
     return YES;
 }
@@ -186,7 +412,18 @@ static CefRefPtr<ChromiumClient> g_client;
 + (nullable NSView *)createBrowserInView:(NSView *)parentView
                                      url:(NSString *)urlString {
     if (!g_cefInitialized) {
-        NSLog(@"❌ CEF not initialized — cannot create browser");
+        NSLog(@"💥 CRITICAL: CEF not initialized — cannot create browser. "
+              @"Call initializeCEFWithError: first and check for errors.");
+        return nil;
+    }
+
+    if (!parentView) {
+        NSLog(@"💥 CRITICAL: parentView is nil — cannot create browser");
+        return nil;
+    }
+
+    if (!urlString || [urlString length] == 0) {
+        NSLog(@"💥 CRITICAL: urlString is nil or empty — cannot create browser");
         return nil;
     }
 
@@ -196,8 +433,8 @@ static CefRefPtr<ChromiumClient> g_client;
     // Window info — SetAsChild forces Alloy (windowed-child) mode
     CefWindowInfo windowInfo;
     NSRect parentBounds = parentView.bounds;
-    NSLog(@"🔧 Calling SetAsChild with parentView=%@ rect=(%d,%d,%d,%d)",
-          parentView, (int)parentBounds.origin.x, (int)parentBounds.origin.y,
+    NSLog(@"🔧 Calling SetAsChild with parentView bounds=(%d,%d,%d,%d)",
+          (int)parentBounds.origin.x, (int)parentBounds.origin.y,
           (int)parentBounds.size.width, (int)parentBounds.size.height);
     windowInfo.SetAsChild((__bridge void*)parentView,
                           CefRect((int)parentBounds.origin.x, (int)parentBounds.origin.y,
@@ -208,27 +445,36 @@ static CefRefPtr<ChromiumClient> g_client;
 
     // Create the C++ client
     g_client = new ChromiumClient();
+    NSLog(@"✅ ChromiumClient created");
 
     // Create the browser
     CefString url;
     url.FromString([urlString UTF8String]);
 
+    NSLog(@"🔧 Calling CefBrowserHost::CreateBrowserSync...");
     CefRefPtr<CefBrowser> browser =
         CefBrowserHost::CreateBrowserSync(windowInfo, g_client, url, browserSettings, nullptr, nullptr);
 
     if (!browser) {
-        NSLog(@"❌ CreateBrowserSync returned null");
+        NSLog(@"💥 CRITICAL: CreateBrowserSync returned null. This means the browser subprocess failed to initialize. "
+              @"Likely causes: helper process crash, dyld framework loading failure, JIT entitlements missing, "
+              @"or invalid code signatures. Check the CEF debug log and system logs for details.");
         g_client = nullptr;
         return nil;
     }
 
-    NSLog(@"✓ Browser created: %p", browser.get());
+    NSLog(@"✅ Browser object created: %p", browser.get());
     g_browser = browser;
 
     // Get the native view that CEF created and is rendering into
     NSView* cefView = (__bridge NSView*)browser->GetHost()->GetWindowHandle();
-    NSLog(@"✅ Browser setup complete: CEF view=%@ frame=%@", cefView, NSStringFromRect(cefView.frame));
-    NSLog(@"🌍 Initial URL: %@", urlString);
+    if (!cefView) {
+        NSLog(@"💥 CRITICAL: GetWindowHandle returned null despite successful browser creation");
+        return nil;
+    }
+
+    NSLog(@"✅ Browser view obtained: %@ frame=%@", cefView, NSStringFromRect(cefView.frame));
+    NSLog(@"✅ Browser initialization complete. Initial URL: %@", urlString);
 
     // Return the CEF-created view (it's already added to parentView by SetAsChild)
     return cefView;
@@ -284,6 +530,16 @@ static CefRefPtr<ChromiumClient> g_client;
 + (void)doMessageLoopWork {
     if (g_cefInitialized) {
         CefDoMessageLoopWork();
+    }
+}
+
++ (void)notifyBrowserViewGeometryChanged {
+    if (!g_browser) {
+        return;
+    }
+    CefRefPtr<CefBrowserHost> host = g_browser->GetHost();
+    if (host.get()) {
+        host->WasResized();
     }
 }
 

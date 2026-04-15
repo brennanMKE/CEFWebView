@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(xcodebuild clean *)",
-      "Bash(xcodebuild build *)"
+      "Bash(xcodebuild build *)",
+      "Bash(swift build *)"
     ]
   }
 }

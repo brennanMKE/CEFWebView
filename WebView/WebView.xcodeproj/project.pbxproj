@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		265AFCA92F8F3737006C46E1 /* Chromium Embedded Framework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26D2FF1A2F8F286E00EBA96E /* Chromium Embedded Framework.framework */; };
+		265AFCAA2F8F3737006C46E1 /* Chromium Embedded Framework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 26D2FF1A2F8F286E00EBA96E /* Chromium Embedded Framework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		26D2FF0E2F8F281E00EBA96E /* CEFWebView in Frameworks */ = {isa = PBXBuildFile; productRef = 26D2FE902F8F20DF00EBA96E /* CEFWebView */; };
 /* End PBXBuildFile section */
 
@@ -27,11 +29,26 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		265AFCAB2F8F3737006C46E1 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				265AFCAA2F8F3737006C46E1 /* Chromium Embedded Framework.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		26D2FE652F8F20CD00EBA96E /* WebView.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WebView.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		26D2FE722F8F20CE00EBA96E /* WebViewTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WebViewTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		26D2FE7C2F8F20CE00EBA96E /* WebViewUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WebViewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		26D2FE9D2F8F228100EBA96E /* Build.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Build.xcconfig; sourceTree = "<group>"; };
+		26D2FF1A2F8F286E00EBA96E /* Chromium Embedded Framework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = "Chromium Embedded Framework.framework"; path = "../Frameworks/Chromium Embedded Framework.framework"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -58,6 +75,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				26D2FF0E2F8F281E00EBA96E /* CEFWebView in Frameworks */,
+				265AFCA92F8F3737006C46E1 /* Chromium Embedded Framework.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,36 +95,15 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		26D2FECEF8F281E00EBA96E /* Copy CEF Framework */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-			);
-			name = "Copy CEF Framework";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		26D2FECFF8F281E00EBA96E /* Copy CEF Framework Script */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Copy CEF framework from package to app bundle\nmkdir -p \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks\"\ncp -a \"${SRCROOT}/../Frameworks/Chromium Embedded Framework.framework\" \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks/\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXGroup section */
+		265AFC9B2F8F3716006C46E1 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				26D2FF1A2F8F286E00EBA96E /* Chromium Embedded Framework.framework */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		26D2FE5C2F8F20CD00EBA96E = {
 			isa = PBXGroup;
 			children = (
@@ -115,6 +112,7 @@
 				26D2FE752F8F20CE00EBA96E /* WebViewTests */,
 				26D2FE7F2F8F20CE00EBA96E /* WebViewUITests */,
 				26D2FE662F8F20CD00EBA96E /* Products */,
+				265AFC9B2F8F3716006C46E1 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -145,8 +143,11 @@
 			buildPhases = (
 				26D2FE612F8F20CD00EBA96E /* Sources */,
 				26D2FE622F8F20CD00EBA96E /* Frameworks */,
-				26D2FECFF8F281E00EBA96E /* Copy CEF Framework Script */,
+				26D2FECFF8F281E00EBA96E /* Copy CEF */,
+				26D2FED22F8F2A0000EBA96E /* Embed CEF Helpers */,
 				26D2FE632F8F20CD00EBA96E /* Resources */,
+				265AFCAB2F8F3737006C46E1 /* Embed Frameworks */,
+				26D2FED12F8F290000EBA96E /* Fix CEF Framework */,
 			);
 			buildRules = (
 			);
@@ -242,7 +243,7 @@
 			mainGroup = 26D2FE5C2F8F20CD00EBA96E;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference "../../CEFWebView" */,
+				26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference ".." */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26D2FE662F8F20CD00EBA96E /* Products */;
@@ -279,6 +280,51 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		26D2FECFF8F281E00EBA96E /* Copy CEF */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy CEF";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copy CEF framework from package to app bundle\nmkdir -p \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks\"\ncp -a \"${SRCROOT}/../Frameworks/Chromium Embedded Framework.framework\" \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks/\"\n\n# Re-sign the framework with Xcode's code signing identity\nFRAMEWORK_PATH=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks/Chromium Embedded Framework.framework\"\n\n# Use the identity from Xcode's build environment, or discover it\nif [ -n \"$EXPANDED_CODE_SIGN_IDENTITY\" ]; then\n    SIGNING_IDENTITY=\"$EXPANDED_CODE_SIGN_IDENTITY\"\nelse\n    SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep \"Apple Development\" | head -1 | sed 's/.*) \\(.*\\) (.*$/\\1/' | awk '{print $1}')\nfi\n\nif [ -n \"$SIGNING_IDENTITY\" ]; then\n    codesign --force --sign \"$SIGNING_IDENTITY\" \"${FRAMEWORK_PATH}\" 2>/dev/null || true\nfi\n";
+		};
+		26D2FED22F8F2A0000EBA96E /* Embed CEF Helpers */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Embed CEF Helpers";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"${SRCROOT}/Scripts/embed_cef_helpers.sh\"\n";
+		};
+		26D2FED12F8F290000EBA96E /* Fix CEF Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Fix CEF Framework";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../fix_cef_framework.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		26D2FE612F8F20CD00EBA96E /* Sources */ = {
@@ -447,7 +493,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XV8BAAVZ6V;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -477,7 +523,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XV8BAAVZ6V;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -616,9 +662,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference "../../CEFWebView" */ = {
+		26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../CEFWebView;
+			relativePath = ..;
 		};
 /* End XCLocalSwiftPackageReference section */
 

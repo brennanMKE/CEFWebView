@@ -2,14 +2,19 @@
 
 import SwiftUI
 import CEFWebView
+import os.log
 
 @main
 struct WebViewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
+        print("🚀 WebViewApp.init() called")
+
         // Handle CEF subprocess roles before any other initialization
+        print("🚀 About to call CEFApplication.handleSubprocessIfNeeded()")
         CEFApplication.handleSubprocessIfNeeded()
+        print("🚀 Returned from CEFApplication.handleSubprocessIfNeeded()")
     }
 
     var body: some Scene {
@@ -24,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try CEFApplication.shared.initialize()
         } catch {
-            NSLog("Failed to initialize CEF: %@", error.localizedDescription)
+            print("Failed to initialize CEF: %@", error.localizedDescription)
         }
     }
 

@@ -1,12 +1,12 @@
-// CEF Frameworks are managed by the CEFWebView package in the Frameworks directory
-// Configure framework discovery, linking, and runtime resolution
-SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
+// CEF Frameworks live under the package root at ../Frameworks (relative to this WebView/ project).
+// The CEFWrapper package links -lcef_dll_wrapper; Xcode must pass -L here so the final app link
+// finds libcef_dll_wrapper.a (SPM's -L../../Frameworks does not resolve for the app linker cwd).
+// Do not set OTHER_LDFLAGS = -lcef_dll_wrapper — that duplicates SPM's -lcef_dll_wrapper.
 FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
 LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
 
-// Runtime framework resolution paths
-// Search in the app bundle's Frameworks folder first, then fall back to package Frameworks
-LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks $(SRCROOT)/../Frameworks"
+// RPATH for the main executable is set on the WebView target (@executable_path/../Frameworks).
+// Do not add $(SRCROOT) to LD_RUNPATH — that path does not exist on end-user machines.
 
 // Copy frameworks to app bundle during build
 // The Chromium Embedded Framework is copied via a Copy Files build phase

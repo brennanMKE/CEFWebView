@@ -50,6 +50,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// Process pending CEF messages (call regularly from message pump)
 + (void)doMessageLoopWork;
 
+/// Call after the embedding NSView changes size or layout (SwiftUI updates frames asynchronously).
+/// Maps to CefBrowserHost::WasResized(); required or the browser can stay at 0×0 and show a blank view.
++ (void)notifyBrowserViewGeometryChanged;
+
 /// Shutdown CEF gracefully
 + (void)shutdown;
 
