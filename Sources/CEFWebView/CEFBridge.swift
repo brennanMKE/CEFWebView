@@ -14,24 +14,85 @@ public final class CEFApplication {
     private var isInitialized = false
     weak var activeBrowserHost: CEFBrowserHost?
 
-    nonisolated(unsafe) private var notificationObserver: NSObjectProtocol?
+    /// Tracks helper processes that spawned before a `CEFBrowserHost` exists (GPU/network/storage
+    /// typically spawn during `CefInitialize`, before SwiftUI creates the browser).
+    private var helperSpawnedGPU = false
+    private var helperSpawnedNetwork = false
+    private var helperSpawnedStorage = false
+    private var helperSpawnedRenderer = false
+
+    /// Tracks helper failures (renderer can fail even if it spawned)
+    private var helperFailedGPU = false
+    private var helperFailedNetwork = false
+    private var helperFailedStorage = false
+    private var helperFailedRenderer = false
+
+    /// Main-frame load error details (from `OnLoadError`), buffered until `CEFBrowserHost` exists.
+    private var lastMainFrameLoadErrorCode: Int?
+    private var lastMainFrameLoadErrorText: String?
+
+    nonisolated(unsafe) private var spawnedObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var failedObserver: NSObjectProtocol?
 
     private init() {
+        cefLogger.info("🔔 CEFApplication.init() - registering notification observers")
+
         // Observe helper spawning notifications from CEFWrapper (C/Objective-C side)
-        notificationObserver = NotificationCenter.default.addObserver(
+        spawnedObserver = NotificationCenter.default.addObserver(
             forName: NSNotification.Name("CEFHelperSpawned"),
             object: nil,
             queue: .main
         ) { notification in
-            if let userInfo = notification.userInfo as? [String: String],
-               let helperType = userInfo["type"] {
-                CEFBrowserHost.notifyHelperSpawned(helperType)
+            cefLogger.info("🟢 CEFHelperSpawned notification RECEIVED on main queue")
+            cefLogger.debug("Notification object: \(String(describing: notification.object))")
+            if let userInfo = notification.userInfo as? [String: String] {
+                cefLogger.debug("✅ userInfo parsed successfully: \(userInfo)")
+                if let helperType = userInfo["type"] {
+                    cefLogger.info("🟢 Found helperType in userInfo: \(helperType)")
+                    Task { @MainActor in
+                        cefLogger.info("📋 Calling recordHelperSpawned(\(helperType))")
+                        CEFApplication.shared.recordHelperSpawned(helperType)
+                    }
+                } else {
+                    cefLogger.warning("❌ userInfo has keys but missing 'type' key: \(userInfo.keys)")
+                }
+            } else {
+                cefLogger.warning("❌ CEFHelperSpawned userInfo not [String: String]. Raw userInfo: \(String(describing: notification.userInfo))")
             }
         }
+
+        // Observe helper failure notifications from CEFWrapper (C/Objective-C side)
+        failedObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("CEFHelperFailed"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            cefLogger.info("CEFHelperFailed notification received")
+            guard let userInfo = notification.userInfo,
+                  let helperType = userInfo["type"] as? String
+            else {
+                cefLogger.warning("CEFHelperFailed missing userInfo or type: \(String(describing: notification.userInfo))")
+                return
+            }
+            let errorCode = (userInfo["errorCode"] as? NSNumber).map { $0.intValue }
+            let errorText = userInfo["errorText"] as? String
+            Task { @MainActor in
+                CEFApplication.shared.recordHelperFailed(
+                    helperType,
+                    mainFrameLoadErrorCode: errorCode,
+                    mainFrameLoadErrorText: errorText
+                )
+            }
+        }
+
+        cefLogger.info("✅ Notification observers registered successfully")
     }
 
     deinit {
-        if let observer = notificationObserver {
+        if let observer = spawnedObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = failedObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -78,6 +139,136 @@ public final class CEFApplication {
         isInitialized = true
     }
 
+    /// Records a helper spawn from `CEFHelperSpawned` notifications (may arrive before `CEFBrowserHost` exists).
+    func recordHelperSpawned(_ type: String) {
+        cefLogger.info("🟢 recordHelperSpawned called with type: \(type)")
+        let lowerType = type.lowercased()
+        cefLogger.debug("Type lowercased: \(lowerType)")
+
+        switch lowerType {
+        case "gpu":
+            cefLogger.debug("Setting helperSpawnedGPU = true")
+            helperSpawnedGPU = true
+        case "network":
+            cefLogger.debug("Setting helperSpawnedNetwork = true")
+            helperSpawnedNetwork = true
+        case "storage":
+            cefLogger.debug("Setting helperSpawnedStorage = true")
+            helperSpawnedStorage = true
+        case "renderer":
+            cefLogger.debug("Setting helperSpawnedRenderer = true")
+            helperSpawnedRenderer = true
+        default:
+            cefLogger.warning("⚠️ Unknown helper type from CEF: \(type)")
+            return
+        }
+
+        cefLogger.info("✅ Recorded helper spawn (accumulated): \(type)")
+
+        if let state = activeBrowserHost?.state {
+            cefLogger.info("🟢 Broadcasting state change to CEFWebViewState")
+            applyAccumulatedHelperFlags(to: state)
+        } else {
+            cefLogger.info("ℹ️ No activeBrowserHost.state available yet - flags will be applied when browser attaches")
+        }
+    }
+
+    /// Records a helper failure from `CEFHelperFailed` notifications.
+    /// `mainFrameLoadErrorCode` / `mainFrameLoadErrorText` are set when the failure comes from CEF `OnLoadError` (main frame).
+    func recordHelperFailed(
+        _ type: String,
+        mainFrameLoadErrorCode: Int? = nil,
+        mainFrameLoadErrorText: String? = nil
+    ) {
+        cefLogger.info("recordHelperFailed type=\(type) loadErrorCode=\(String(describing: mainFrameLoadErrorCode))")
+        let lowerType = type.lowercased()
+
+        switch lowerType {
+        case "gpu":
+            helperFailedGPU = true
+            helperSpawnedGPU = false
+        case "network":
+            helperFailedNetwork = true
+            helperSpawnedNetwork = false
+        case "storage":
+            helperFailedStorage = true
+            helperSpawnedStorage = false
+        case "renderer":
+            helperFailedRenderer = true
+            helperSpawnedRenderer = false
+            if let code = mainFrameLoadErrorCode {
+                lastMainFrameLoadErrorCode = code
+                lastMainFrameLoadErrorText = mainFrameLoadErrorText
+            } else {
+                lastMainFrameLoadErrorCode = nil
+                lastMainFrameLoadErrorText = nil
+            }
+        default:
+            cefLogger.warning("Unknown helper type from CEF: \(type)")
+            return
+        }
+
+        if let state = activeBrowserHost?.state {
+            applyAccumulatedHelperFlags(to: state)
+            if lowerType == "renderer" {
+                state.isLoading = false
+            }
+        } else {
+            cefLogger.debug("No activeBrowserHost.state yet; failure flags buffered for attach")
+        }
+    }
+
+    /// Clears renderer failure state when starting a new navigation (user or programmatic load).
+    func clearRendererFailureStateForNewNavigation() {
+        helperFailedRenderer = false
+        lastMainFrameLoadErrorCode = nil
+        lastMainFrameLoadErrorText = nil
+    }
+
+    /// Copies accumulated flags into `CEFWebViewState` (call when the browser host attaches state).
+    fileprivate func applyAccumulatedHelperFlags(to state: CEFWebViewState) {
+        cefLogger.info("🔄 applyAccumulatedHelperFlags: applying spawn flags")
+
+        if helperSpawnedGPU {
+            cefLogger.debug("  → Setting state.gpuHelperSpawned = true")
+            state.gpuHelperSpawned = true
+        }
+        if helperSpawnedNetwork {
+            cefLogger.debug("  → Setting state.networkHelperSpawned = true")
+            state.networkHelperSpawned = true
+        }
+        if helperSpawnedStorage {
+            cefLogger.debug("  → Setting state.storageHelperSpawned = true")
+            state.storageHelperSpawned = true
+        }
+        if helperSpawnedRenderer {
+            cefLogger.debug("  → Setting state.rendererHelperSpawned = true")
+            state.rendererHelperSpawned = true
+        }
+
+        cefLogger.info("🔄 applyAccumulatedHelperFlags: applying failure flags")
+
+        if helperFailedGPU {
+            cefLogger.error("  → 🔴 Setting state.gpuHelperFailed = true")
+            state.gpuHelperFailed = true
+        }
+        if helperFailedNetwork {
+            cefLogger.error("  → 🔴 Setting state.networkHelperFailed = true")
+            state.networkHelperFailed = true
+        }
+        if helperFailedStorage {
+            cefLogger.error("  → 🔴 Setting state.storageHelperFailed = true")
+            state.storageHelperFailed = true
+        }
+        if helperFailedRenderer {
+            state.rendererHelperFailed = true
+            state.lastMainFrameLoadErrorCode = lastMainFrameLoadErrorCode
+            state.lastMainFrameLoadErrorText = lastMainFrameLoadErrorText
+        }
+
+        cefLogger.debug("applyAccumulatedHelperFlags complete")
+    }
+
     /// Shutdown CEF gracefully. Should be called on app termination.
     public func shutdown() {
         CEFWrapper.shutdown()
@@ -91,7 +282,8 @@ public final class CEFApplication {
 @MainActor
 public final class CEFBrowserHost {
     private var isAlive = true
-    private weak var state: CEFWebViewState?
+    /// Observable SwiftUI state; internal so `CEFApplication` can merge accumulated helper-spawn flags.
+    internal weak var state: CEFWebViewState?
 
     /// The native macOS view for CEF rendering.
     public let nativeView: NSView?
@@ -111,6 +303,9 @@ public final class CEFBrowserHost {
         cefLogger.info("CEF Browser View Created Successfully: \(String(describing: browserView))")
         self.nativeView = browserView
         self.state = state
+        if let state {
+            CEFApplication.shared.applyAccumulatedHelperFlags(to: state)
+        }
     }
 
     /// Load a URL in the browser.
@@ -119,9 +314,13 @@ public final class CEFBrowserHost {
             cefLogger.warning("loadURL called but browserHost is dead")
             return
         }
-        cefLogger.info("🌐 loadURL called: \(url.absoluteString)")
+        CEFApplication.shared.clearRendererFailureStateForNewNavigation()
+        state?.rendererHelperFailed = false
+        state?.lastMainFrameLoadErrorCode = nil
+        state?.lastMainFrameLoadErrorText = nil
+
+        cefLogger.info("loadURL: \(url.absoluteString)")
         CEFWrapper.loadURL(url.absoluteString)
-        cefLogger.info("🌐 CEFWrapper.loadURL returned")
         updateState()
     }
 
@@ -158,35 +357,6 @@ public final class CEFBrowserHost {
         guard isAlive else { return }
         isAlive = false
         CEFWrapper.closeBrowser()
-    }
-
-    // MARK: - Helper Spawning Tracking
-
-    /// Called from CEFWrapper when helper processes spawn (GPU, network, storage, renderer)
-    static func notifyHelperSpawned(_ type: String) {
-        cefLogger.debug("Helper process spawned: \(type)")
-
-        // Update state on main thread
-        DispatchQueue.main.async {
-            if let state = CEFApplication.shared.activeBrowserHost?.state {
-                switch type.lowercased() {
-                case "gpu":
-                    state.gpuHelperSpawned = true
-                    cefLogger.info("GPU helper spawned ✅")
-                case "network":
-                    state.networkHelperSpawned = true
-                    cefLogger.info("Network helper spawned ✅")
-                case "storage":
-                    state.storageHelperSpawned = true
-                    cefLogger.info("Storage helper spawned ✅")
-                case "renderer":
-                    state.rendererHelperSpawned = true
-                    cefLogger.info("Renderer helper spawned ✅")
-                default:
-                    break
-                }
-            }
-        }
     }
 }
 

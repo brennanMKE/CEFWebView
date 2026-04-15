@@ -31,9 +31,16 @@ echo "💾 Writing to: $LOG_FILE"
     }
 
     echo ""
+    echo "--- NSLog Output from WebView Process ---"
+    echo ""
+    /usr/bin/log show --predicate 'process == "WebView"' --debug --info --last 2m 2>/dev/null || {
+        echo "⚠️  Could not read WebView process logs."
+    }
+
+    echo ""
     echo "--- System Logs (All App-Related Processes) ---"
     echo ""
-    /usr/bin/log show --predicate "processImagePath CONTAINS \"$BUNDLE_ID\" OR process == \"CEFHelper\" OR process == \"CEFHelperRenderer\"" --debug --info --last 2m 2>/dev/null || {
+    /usr/bin/log show --predicate "processImagePath CONTAINS \"$BUNDLE_ID\" OR process == \"CEFHelper\" OR process == \"CEFHelperRenderer\" OR process == \"WebView\"" --debug --info --last 2m 2>/dev/null || {
         echo "⚠️  Could not read system logs. You may need to run with elevated permissions."
         echo "Try: sudo $0"
     }

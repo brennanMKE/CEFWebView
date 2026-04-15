@@ -4,17 +4,19 @@ import SwiftUI
 import CEFWebView
 import os.log
 
+private let appLogger = Logger(subsystem: "co.sstools.CEFWebView", category: "WebViewApp")
+
 @main
 struct WebViewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
-        print("🚀 WebViewApp.init() called")
+        appLogger.info("🚀 WebViewApp.init() called")
 
         // Handle CEF subprocess roles before any other initialization
-        print("🚀 About to call CEFApplication.handleSubprocessIfNeeded()")
+        appLogger.info("🚀 About to call CEFApplication.handleSubprocessIfNeeded()")
         CEFApplication.handleSubprocessIfNeeded()
-        print("🚀 Returned from CEFApplication.handleSubprocessIfNeeded()")
+        appLogger.info("🚀 Returned from CEFApplication.handleSubprocessIfNeeded()")
     }
 
     var body: some Scene {
@@ -26,14 +28,17 @@ struct WebViewApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        appLogger.info("🚀 AppDelegate.applicationDidFinishLaunching() - initializing CEF")
         do {
             try CEFApplication.shared.initialize()
+            appLogger.info("✅ CEF initialized successfully from AppDelegate")
         } catch {
-            print("Failed to initialize CEF: %@", error.localizedDescription)
+            appLogger.error("❌ Failed to initialize CEF: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        appLogger.info("🛑 AppDelegate.applicationWillTerminate() - shutting down CEF")
         CEFApplication.shared.shutdown()
     }
 }

@@ -12,10 +12,12 @@
 #import <dispatch/dispatch.h>
 
 #include <cstring>
+#include <string>
 
 #include "include/cef_app.h"
 #include "include/cef_browser.h"
 #include "include/cef_client.h"
+#include "include/cef_command_line.h"
 #include "include/cef_load_handler.h"
 #include "include/cef_display_handler.h"
 #include "include/cef_version.h"
@@ -25,6 +27,11 @@
 
 extern "C" {
     void NotifyHelperSpawned(const char* helperType);
+    void NotifyHelperFailed(const char* helperType);
+    void NotifyHelperFailedWithLoadError(const char* helperType,
+                                         int errorCode,
+                                         const char* errorText,
+                                         const char* failedUrl);
 }
 
 // ─── CEF App: command-line switches applied in every process ───────────────────
@@ -50,13 +57,38 @@ public:
         command_line->AppendSwitch("disable-quic");
     }
 
+    /// Called before each child process is launched (GPU, utility, renderer, etc.).
+    /// Maps Chromium subprocess types to our Swift UI helper indicators.
+    void OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> command_line) override {
+        if (!command_line.get()) {
+            return;
+        }
+        CefString typeStr = command_line->GetSwitchValue("type");
+        std::string type = typeStr.ToString();
+        if (type.empty()) {
+            return;
+        }
+        if (type == "gpu-process") {
+            NotifyHelperSpawned("gpu");
+        } else if (type == "utility") {
+            CefString sub = command_line->GetSwitchValue("utility-sub-type");
+            std::string subStr = sub.ToString();
+            if (subStr.find("NetworkService") != std::string::npos) {
+                NotifyHelperSpawned("network");
+            } else if (subStr.find("Storage") != std::string::npos) {
+                NotifyHelperSpawned("storage");
+            }
+        } else if (type == "renderer") {
+            NotifyHelperSpawned("renderer");
+        }
+        NSLog(@"🔧 OnBeforeChildProcessLaunch: type=%s utility-sub-type=%s",
+              type.c_str(),
+              command_line->GetSwitchValue("utility-sub-type").ToString().c_str());
+    }
+
     /// Required when using external_message_pump + CefDoMessageLoopWork; without this, renderer IPC
     /// is not serviced promptly and navigations fail with ERR_ABORTED / blank views.
     void OnScheduleMessagePumpWork(int64_t delay_ms) override {
-        FILE* log = fopen("/tmp/cef_test.log", "a");
-        fprintf(log, "[OnScheduleMessagePumpWork] Called with delay_ms=%lld\n", delay_ms);
-        fflush(log);
-        fclose(log);
         NSLog(@"⏰ OnScheduleMessagePumpWork: delay_ms=%lld", delay_ms);
         if (delay_ms <= 0) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -132,10 +164,8 @@ public:
               frame->GetURL().ToString().c_str(),
               frame->IsMain() ? "YES" : "NO");
 
-        // When main frame starts loading, renderer must be spawned
         if (frame->IsMain()) {
-            NSLog(@"📢 OnLoadStart: Main frame loading - renderer subprocess required");
-            NotifyHelperSpawned("renderer");
+            NSLog(@"📢 OnLoadStart: main frame load started (renderer already tracked via OnBeforeChildProcessLaunch)");
         }
     }
 
@@ -156,17 +186,31 @@ public:
         // Subframe failures (ads, trackers, blocked embeds) often report ERR_ABORTED for URLs that
         // look like the top document; only treat main-frame errors as document load failures.
         if (!frame->IsMain()) {
+            NSLog(@"⏭️  OnLoadError (SUBFRAME - ignoring): url=%s error=%d text=%s",
+                  failedUrl.ToString().c_str(),
+                  errorCode,
+                  errorText.ToString().c_str());
             return;
         }
-        NSLog(@"❌ OnLoadError (main frame): url=%s error=%d text=%s",
+        NSLog(@"❌ OnLoadError (MAIN FRAME - CRITICAL): url=%s error=%d text=%s",
               failedUrl.ToString().c_str(),
               errorCode,
               errorText.ToString().c_str());
+        NSLog(@"💥 Main frame failed to load - renderer will be marked as failed");
+
+        // Renderer process failed to load main frame - mark renderer as failed
+        NSLog(@"🔔 Calling NotifyHelperFailedWithLoadError from OnLoadError");
+        NotifyHelperFailedWithLoadError("renderer",
+                                        static_cast<int>(errorCode),
+                                        errorText.ToString().c_str(),
+                                        failedUrl.ToString().c_str());
     }
 
     void OnRenderProcessTerminated(CefRefPtr<CefBrowser> browser,
                                    TerminationStatus status) {
-        NSLog(@"💥 OnRenderProcessTerminated: status=%d", (int)status);
+        NSLog(@"💥 OnRenderProcessTerminated: status=%d (0=normal, 1=abnormal, 2=crashed, 3=oom, 4=launch_failed)", (int)status);
+        NSLog(@"🔔 Calling NotifyHelperFailed(\"renderer\") from OnRenderProcessTerminated");
+        NotifyHelperFailed("renderer");
     }
 
     // CefDisplayHandler overrides
@@ -270,7 +314,72 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     });
 }
 
++ (void)notifyHelperFailed:(NSString *)helperType {
+    NSLog(@"📢 CEFWrapper.notifyHelperFailed called with type: %@", helperType);
+
+    if (!helperType) {
+        NSLog(@"⚠️  CEFWrapper.notifyHelperFailed: helperType is nil, returning early");
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSDictionary *userInfo = @{@"type": helperType};
+        NSLog(@"📮 [MAIN QUEUE] Posting CEFHelperFailed userInfo: %@", userInfo);
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"CEFHelperFailed"
+                                                            object:nil
+                                                          userInfo:userInfo];
+    });
+}
+
++ (void)notifyHelperFailed:(NSString *)helperType
+      mainFrameLoadErrorCode:(NSInteger)errorCode
+                   errorText:(NSString *)errorText
+                  failedUrl:(NSString *)failedUrl {
+    if (!helperType) {
+        return;
+    }
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[@"type"] = helperType;
+    userInfo[@"errorCode"] = @(errorCode);
+    if (errorText) {
+        userInfo[@"errorText"] = errorText;
+    }
+    if (failedUrl) {
+        userInfo[@"failedUrl"] = failedUrl;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSLog(@"📮 [MAIN QUEUE] Posting CEFHelperFailed (main frame load error) userInfo: %@", userInfo);
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"CEFHelperFailed"
+                                                            object:nil
+                                                          userInfo:[userInfo copy]];
+    });
+}
+
 + (int)executeSubprocessWithArgc:(int)argc argv:(char **)argv {
+    NSMutableString* argDump = [NSMutableString stringWithFormat:@"executeSubprocessWithArgc: argc=%d", argc];
+    if (argc > 0 && argv) {
+        for (int i = 0; i < argc; i++) {
+            const char* a = argv[i];
+            NSString* s = a ? [NSString stringWithUTF8String:a] : @"(null)";
+            [argDump appendFormat:@"\n  argv[%d] = %@", i, s];
+        }
+    } else {
+        [argDump appendString:@" (argv nil or argc <= 0)"];
+    }
+    NSLog(@"%@", argDump);
+
+    const BOOL isCEFHelperArgv = CEFIsHelperProcess(argc, argv);
+    if (isCEFHelperArgv) {
+        NSLog(@"executeSubprocessWithArgc: this process has --type=… — CEF helper role; "
+              @"CefExecuteProcess will handle it and this process should exit.");
+    } else {
+        NSLog(@"executeSubprocessWithArgc: no --type= in argv — this is the main browser binary "
+              @"(Xcode often adds -NSDocumentRevisionsDebugMode etc.). "
+              @"GPU/utility/renderer helpers are separate OS processes (WebView Helper.app); "
+              @"their executeSubprocessWithArgc logs appear under the WebView Helper process, "
+              @"not WebView — include helper processes in Console or log show.");
+    }
+
     // Without loading the framework first, CefExecuteProcess jumps through a null stub (crash at 0x0).
     // Helper subprocesses must use LoadInHelper(), not LoadInMain() — see CEF cef_library_loader.h.
     if (!EnsureCEFFrameworkLoaded(CEFIsHelperProcess(argc, argv) ? YES : NO, nil)) {
@@ -299,6 +408,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     settings.no_sandbox = 1;
     settings.external_message_pump = 1;
 
+
 #if TARGET_OS_OSX
     // macOS: set absolute path to the generic helper (see WebView/Scripts/embed_cef_helpers.sh).
     NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
@@ -322,7 +432,6 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
         }
         return NO;
     }
-    CefString(&settings.framework_dir_path).FromString([cefFrameworkPath UTF8String]);
     NSLog(@"✅ CEF framework verified at: %@", cefFrameworkPath);
 
     // HARD FAIL: CEF resources (icudtl.dat, *.pak files) must exist
@@ -340,16 +449,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
         }
         return NO;
     }
-    CefString(&settings.resources_dir_path).FromString([cefResourcesPath UTF8String]);
     NSLog(@"✅ CEF resources verified at: %@", cefResourcesPath);
-
-    CefString(&settings.main_bundle_path).FromString([bundlePath UTF8String]);
-
-    NSString *ua = [NSString stringWithFormat:
-        @"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
-        @"Chrome/%d.%d.%d.%d Safari/537.36",
-        CHROME_VERSION_MAJOR, CHROME_VERSION_MINOR, CHROME_VERSION_BUILD, CHROME_VERSION_PATCH];
-    CefString(&settings.user_agent).FromString([ua UTF8String]);
 
     // HARD FAIL: WebView Helper executable must exist and be executable
     NSString *helperExe = [frameworksDir stringByAppendingPathComponent:
@@ -386,10 +486,21 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
         return NO;
     }
     NSLog(@"✅ Helper is executable");
+#endif
 
+    // Set CEF settings using direct method that keeps data alive
     CefString(&settings.browser_subprocess_path).FromString([helperExe UTF8String]);
     NSLog(@"✅ CEF browser_subprocess_path configured: %@", helperExe);
-#endif
+
+    CefString(&settings.resources_dir_path).FromString([cefResourcesPath UTF8String]);
+    CefString(&settings.framework_dir_path).FromString([cefFrameworkPath UTF8String]);
+    CefString(&settings.main_bundle_path).FromString([bundlePath UTF8String]);
+
+    NSString *ua = [NSString stringWithFormat:
+        @"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+        @"Chrome/%d.%d.%d.%d Safari/537.36",
+        CHROME_VERSION_MAJOR, CHROME_VERSION_MINOR, CHROME_VERSION_BUILD, CHROME_VERSION_PATCH];
+    CefString(&settings.user_agent).FromString([ua UTF8String]);
 
     // Enable verbose CEF logging to debug page rendering issues
     settings.log_severity = LOGSEVERITY_VERBOSE;
@@ -411,8 +522,10 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     NSLog(@"🔧 CEF Initialization Settings:");
     NSLog(@"🔧   no_sandbox: %d", settings.no_sandbox);
     NSLog(@"🔧   external_message_pump: %d", settings.external_message_pump);
-    NSLog(@"🔧   browser_subprocess_path: %s", settings.browser_subprocess_path.str);
-    NSLog(@"🔧   resources_dir_path: %s", settings.resources_dir_path.str);
+    NSLog(@"🔧   browser_subprocess_path: %@",
+          [NSString stringWithUTF8String:CefString(&settings.browser_subprocess_path).ToString().c_str()]);
+    NSLog(@"🔧   resources_dir_path: %@",
+          [NSString stringWithUTF8String:CefString(&settings.resources_dir_path).ToString().c_str()]);
     NSLog(@"🔧 ========================================");
 
     CefRefPtr<CefApp> app = new CEFWebViewApp();
@@ -542,32 +655,24 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 }
 
 + (void)loadURL:(NSString *)urlString {
-    FILE* log = fopen("/tmp/cef_test.log", "a");
-    fprintf(log, "[loadURL] Entering with URL: %s, g_browser=%p\n", [urlString UTF8String], g_browser.get());
+    NSLog(@"🌐 [loadURL] Entering: %@ g_browser=%p", urlString, g_browser.get());
 
     if (!g_browser) {
-        fprintf(log, "[loadURL] ERROR: No browser instance\n");
-        fclose(log);
-        NSLog(@"⚠️  No browser instance");
+        NSLog(@"⚠️ [loadURL] No browser instance");
         return;
     }
 
     CefRefPtr<CefFrame> frame = g_browser->GetMainFrame();
     if (!frame) {
-        fprintf(log, "[loadURL] ERROR: No main frame\n");
-        fclose(log);
-        NSLog(@"⚠️  No main frame");
+        NSLog(@"⚠️ [loadURL] No main frame");
         return;
     }
 
     CefString url;
     url.FromString([urlString UTF8String]);
-    fprintf(log, "[loadURL] Calling frame->LoadURL(%s)\n", [urlString UTF8String]);
+    NSLog(@"🌐 [loadURL] Calling frame->LoadURL(%@)", urlString);
     frame->LoadURL(url);
-    fprintf(log, "[loadURL] SUCCESS: Loaded URL: %s\n", [urlString UTF8String]);
-    fflush(log);
-    fclose(log);
-    NSLog(@"🌐 Loaded URL: %@", urlString);
+    NSLog(@"🌐 [loadURL] frame->LoadURL returned for %@", urlString);
 }
 
 + (void)doMessageLoopWork {
@@ -631,6 +736,39 @@ extern "C" {
         NSLog(@"🚀 [C BRIDGE] Helper spawned: %@", type);
         dispatch_async(dispatch_get_main_queue(), ^{
             [CEFWrapper notifyHelperSpawned:type];
+        });
+    }
+
+    void NotifyHelperFailed(const char* helperType) {
+        if (!helperType) {
+            NSLog(@"❌ [C BRIDGE] NotifyHelperFailed called with null helperType");
+            return;
+        }
+        NSString* type = [NSString stringWithUTF8String:helperType];
+        NSLog(@"❌ [C BRIDGE] Helper failed: %@", type);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [CEFWrapper notifyHelperFailed:type];
+        });
+    }
+
+    void NotifyHelperFailedWithLoadError(const char* helperType,
+                                         int errorCode,
+                                         const char* errorText,
+                                         const char* failedUrl) {
+        if (!helperType) {
+            return;
+        }
+        NSString* type = [NSString stringWithUTF8String:helperType];
+        NSString* text = errorText ? [NSString stringWithUTF8String:errorText] : nil;
+        NSString* url = failedUrl ? [NSString stringWithUTF8String:failedUrl] : nil;
+        NSString* safeText = text ?: @"";
+        NSString* safeUrl = url ?: @"";
+        NSLog(@"❌ [C BRIDGE] Helper failed with load error: %@ code=%d text=%@ url=%@", type, errorCode, safeText, safeUrl);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [CEFWrapper notifyHelperFailed:type
+                  mainFrameLoadErrorCode:errorCode
+                               errorText:text
+                              failedUrl:url];
         });
     }
 }

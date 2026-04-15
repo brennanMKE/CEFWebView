@@ -75,6 +75,15 @@ NS_ASSUME_NONNULL_BEGIN
 /// Internal: Notify that a helper process has spawned (called from C++ notification handler)
 + (void)notifyHelperSpawned:(NSString *)helperType;
 
+/// Internal: Notify that a helper process has failed (called from C++ notification handler)
++ (void)notifyHelperFailed:(NSString *)helperType;
+
+/// Internal: Helper failed with main-frame load error details (OnLoadError).
++ (void)notifyHelperFailed:(NSString *)helperType
+      mainFrameLoadErrorCode:(NSInteger)errorCode
+                   errorText:(nullable NSString *)errorText
+                  failedUrl:(nullable NSString *)failedUrl;
+
 @end
 
 NS_ASSUME_NONNULL_END
