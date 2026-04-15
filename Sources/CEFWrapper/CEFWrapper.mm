@@ -89,7 +89,8 @@ public:
     /// Required when using external_message_pump + CefDoMessageLoopWork; without this, renderer IPC
     /// is not serviced promptly and navigations fail with ERR_ABORTED / blank views.
     void OnScheduleMessagePumpWork(int64_t delay_ms) override {
-        NSLog(@"⏰ OnScheduleMessagePumpWork: delay_ms=%lld", delay_ms);
+        // Disabled this log message because it spams the logs
+        // NSLog(@"⏰ OnScheduleMessagePumpWork: delay_ms=%lld", delay_ms);
         if (delay_ms <= 0) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 CefDoMessageLoopWork();
@@ -176,6 +177,12 @@ public:
               frame->GetURL().ToString().c_str(),
               httpStatusCode,
               frame->IsMain() ? "YES" : "NO");
+
+        // Ensure loading state is cleared when main frame finishes
+        if (frame->IsMain()) {
+            _isLoading = false;
+            NSLog(@"📊 OnLoadEnd (MAIN FRAME): set isLoading=false");
+        }
     }
 
     void OnLoadError(CefRefPtr<CefBrowser> browser,
