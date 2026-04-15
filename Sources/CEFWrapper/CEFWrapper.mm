@@ -405,9 +405,27 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 
     CefMainArgs args;
     CefSettings settings;
+
     settings.no_sandbox = 1;
     settings.external_message_pump = 1;
 
+    // Enable verbose logging
+    settings.log_severity = LOGSEVERITY_VERBOSE;
+    CefString(&settings.log_file).FromString("/tmp/cef_debug.log");
+
+    // Also append command-line switches for extra verbosity
+    CefRefPtr<CefCommandLine> command_line = CefCommandLine::GetGlobalCommandLine();
+    if (command_line.get()) {
+        command_line->AppendSwitch("enable-logging");
+        command_line->AppendSwitchWithValue("v", "3");  // v=3 for very verbose
+
+        // TEST: Single-process mode to isolate subprocess spawning issues
+        // If single-process mode works, the problem is subprocess spawning.
+        // If it still fails, the problem is in CEF core or configuration.
+        // IMPORTANT: Remove this after testing — single-process is not production-ready.
+        // Uncomment the line below to enable:
+        // command_line->AppendSwitch("single-process");
+    }
 
 #if TARGET_OS_OSX
     // macOS: set absolute path to the generic helper (see WebView/Scripts/embed_cef_helpers.sh).

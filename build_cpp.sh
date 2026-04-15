@@ -102,6 +102,10 @@ copy_dynamic_framework() {
         local fw_dest="$FRAMEWORKS_DIR/Chromium Embedded Framework.framework"
         restructure_framework "$fw_dest"
 
+        # Remove pre-existing signature from CEF's team so Xcode can re-sign with our team cert
+        echo "  🔓 Removing CEF's pre-existing signature..."
+        codesign --remove-signature "$fw_dest/Versions/A/Chromium Embedded Framework" 2>/dev/null || true
+
         echo "✓ Copied Chromium Embedded Framework to Frameworks/"
     else
         echo "⚠️  Warning: Could not find Chromium Embedded Framework at $cef_framework"

@@ -46,6 +46,19 @@ echo "💾 Writing to: $LOG_FILE"
     }
 
     echo ""
+    echo "--- CEF Helper Debug Log (/tmp) ---"
+    echo ""
+
+    # Capture CEF helper debug log from /tmp
+    if [ -f "/tmp/cef_helper_debug.log" ]; then
+        echo "Found: /tmp/cef_helper_debug.log (last 100 lines):"
+        echo ""
+        tail -100 "/tmp/cef_helper_debug.log"
+    else
+        echo "⚠️  CEF helper debug log not found at /tmp/cef_helper_debug.log"
+    fi
+
+    echo ""
     echo "--- CEF Debug Log (if available) ---"
     echo ""
 
@@ -54,9 +67,9 @@ echo "💾 Writing to: $LOG_FILE"
     if [ -d "$CEF_CACHE_DIR" ]; then
         echo "Searching for CEF logs in: $CEF_CACHE_DIR"
         if [ -f "$CEF_CACHE_DIR/debug.log" ]; then
-            echo "Found: $CEF_CACHE_DIR/debug.log (last 300 lines):"
+            echo "Found: $CEF_CACHE_DIR/debug.log (last 100 lines):"
             echo ""
-            tail -300 "$CEF_CACHE_DIR/debug.log"
+            tail -100 "$CEF_CACHE_DIR/debug.log"
         else
             echo "⚠️  CEF debug.log not found in $CEF_CACHE_DIR"
             echo "    Available files in cache directory:"

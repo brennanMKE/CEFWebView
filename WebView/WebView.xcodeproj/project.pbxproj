@@ -296,20 +296,6 @@
 			shellPath = /bin/sh;
 			shellScript = "# Copy CEF framework from package to app bundle\nmkdir -p \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks\"\ncp -a \"${SRCROOT}/../Frameworks/Chromium Embedded Framework.framework\" \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks/\"\n\n# Re-sign the framework with Xcode's code signing identity\nFRAMEWORK_PATH=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks/Chromium Embedded Framework.framework\"\n\n# Use the identity from Xcode's build environment, or discover it\nif [ -n \"$EXPANDED_CODE_SIGN_IDENTITY\" ]; then\n    SIGNING_IDENTITY=\"$EXPANDED_CODE_SIGN_IDENTITY\"\nelse\n    SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep \"Apple Development\" | head -1 | sed 's/.*) \\(.*\\) (.*$/\\1/' | awk '{print $1}')\nfi\n\nif [ -n \"$SIGNING_IDENTITY\" ]; then\n    codesign --force --sign \"$SIGNING_IDENTITY\" \"${FRAMEWORK_PATH}\" 2>/dev/null || true\nfi\n";
 		};
-		26D2FED22F8F2A0000EBA96E /* Embed CEF Helpers */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Embed CEF Helpers";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"${SRCROOT}/Scripts/embed_cef_helpers.sh\"\n";
-		};
 		26D2FED12F8F290000EBA96E /* Fix CEF Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -323,6 +309,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/../fix_cef_framework.sh\"\n";
+		};
+		26D2FED22F8F2A0000EBA96E /* Embed CEF Helpers */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Embed CEF Helpers";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"${SRCROOT}/Scripts/embed_cef_helpers.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -671,7 +671,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		26D2FE902F8F20DF00EBA96E /* CEFWebView */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference "../../CEFWebView" */;
+			package = 26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference ".." */;
 			productName = CEFWebView;
 		};
 /* End XCSwiftPackageProductDependency section */
