@@ -192,6 +192,15 @@ public:
                   errorText.ToString().c_str());
             return;
         }
+
+        // ERR_ABORTED (-3) is normal for redirects and navigation interruptions.
+        // The page often loads successfully despite this error, so don't report it.
+        if (errorCode == -3) {  // net::ERR_ABORTED
+            NSLog(@"⏭️  OnLoadError (MAIN FRAME - ERR_ABORTED, ignoring): url=%s",
+                  failedUrl.ToString().c_str());
+            return;
+        }
+
         NSLog(@"❌ OnLoadError (MAIN FRAME - CRITICAL): url=%s error=%d text=%s",
               failedUrl.ToString().c_str(),
               errorCode,
