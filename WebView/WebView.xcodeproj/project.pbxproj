@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		26D2FF0E2F8F281E00EBA96E /* CEFWebView in Frameworks */ = {isa = PBXBuildFile; productRef = 26D2FE902F8F20DF00EBA96E /* CEFWebView */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		26D2FE732F8F20CE00EBA96E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -53,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				26D2FF0E2F8F281E00EBA96E /* CEFWebView in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +76,35 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		26D2FECEF8F281E00EBA96E /* Copy CEF Framework */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Copy CEF Framework";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		26D2FECFF8F281E00EBA96E /* Copy CEF Framework Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copy CEF framework from package to app bundle\nmkdir -p \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks\"\ncp -a \"${SRCROOT}/../Frameworks/Chromium Embedded Framework.framework\" \"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks/\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXGroup section */
 		26D2FE5C2F8F20CD00EBA96E = {
@@ -111,8 +145,7 @@
 			buildPhases = (
 				26D2FE612F8F20CD00EBA96E /* Sources */,
 				26D2FE622F8F20CD00EBA96E /* Frameworks */,
-				26D2FE59094554 /* Create Helper App Bundles */,
-				26D2FE59094554A /* Fix CEF Framework Symlinks */,
+				26D2FECFF8F281E00EBA96E /* Copy CEF Framework Script */,
 				26D2FE632F8F20CD00EBA96E /* Resources */,
 			);
 			buildRules = (
@@ -270,28 +303,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		26D2FE59094554 /* Create Helper App Bundles */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Get the built helper executables from SPM build directory\nHELPER_EXEC=\"${BUILD_DIR}/Release/CEFHelper\"\nRENDERER_EXEC=\"${BUILD_DIR}/Release/CEFHelperRenderer\"\n\n# Determine app framework path\nFRAMEWORKS=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/../Frameworks\"\n\n# Create CEFHelper.app bundle\nHELPER_APP=\"${FRAMEWORKS}/CEFHelper.app\"\nmkdir -p \"${HELPER_APP}/Contents/MacOS\"\n[ -f \"${HELPER_EXEC}\" ] && cp \"${HELPER_EXEC}\" \"${HELPER_APP}/Contents/MacOS/CEFHelper\"\nchmod +x \"${HELPER_APP}/Contents/MacOS/CEFHelper\" 2>/dev/null || true\n\n# Create Info.plist for CEFHelper\nmkdir -p \"${HELPER_APP}/Contents\"\ncat > \"${HELPER_APP}/Contents/Info.plist\" <<'PLIST'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>CEFHelper</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.brennanmke.webview.helper</string>\n    <key>CFBundleVersion</key>\n    <string>1.0</string>\n</dict>\n</plist>\nPLIST\n\n# Create CEFHelper (Renderer).app bundle\nRENDERER_APP=\"${FRAMEWORKS}/CEFHelper (Renderer).app\"\nmkdir -p \"${RENDERER_APP}/Contents/MacOS\"\n[ -f \"${RENDERER_EXEC}\" ] && cp \"${RENDERER_EXEC}\" \"${RENDERER_APP}/Contents/MacOS/CEFHelper\"\nchmod +x \"${RENDERER_APP}/Contents/MacOS/CEFHelper\" 2>/dev/null || true\n\n# Create Info.plist for renderer\nmkdir -p \"${RENDERER_APP}/Contents\"\ncat > \"${RENDERER_APP}/Contents/Info.plist\" <<'PLIST'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>CEFHelper</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.brennanmke.webview.helper.renderer</string>\n    <key>CFBundleVersion</key>\n    <string>1.0</string>\n</dict>\n</plist>\nPLIST\n\necho \"✓ Helper app bundles created\"";
-		};
-		26D2FE59094554A /* Fix CEF Framework Symlinks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/../CEFWebView/fix_cef_framework.sh\"";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 
 /* Begin PBXTargetDependency section */
 		26D2FE742F8F20CE00EBA96E /* PBXTargetDependency */ = {
@@ -604,20 +615,20 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		26D2FE902F8F20DF00EBA96E /* CEFWebView */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 26D2FE8F2F8F20DF00EBA96E /* CEFWebView */;
-			productName = CEFWebView;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCLocalSwiftPackageReference section */
 		26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference "../../CEFWebView" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../CEFWebView;
 		};
 /* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		26D2FE902F8F20DF00EBA96E /* CEFWebView */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 26D2FE8F2F8F20DF00EBA96E /* XCLocalSwiftPackageReference "../../CEFWebView" */;
+			productName = CEFWebView;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 26D2FE5D2F8F20CD00EBA96E /* Project object */;
 }

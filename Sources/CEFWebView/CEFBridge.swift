@@ -12,6 +12,19 @@ public final class CEFApplication {
     private var messagePumpTimer: Timer?
     weak var activeBrowserHost: CEFBrowserHost?
 
+    /// Handle CEF subprocess roles at the very start of the app, before any other initialization.
+    /// If this process is a CEF subprocess (renderer, GPU, utility, network), this method will
+    /// call exit() — it does not return. If this is the main browser process, returns normally.
+    /// Must be called from the main thread before SwiftUI initializes.
+    public nonisolated static func handleSubprocessIfNeeded() {
+        let exitCode = CEFWrapper.executeSubprocess(withArgc: CommandLine.argc, argv: CommandLine.unsafeArgv)
+        if exitCode >= 0 {
+            // This is a subprocess; exit with the exit code returned by CefExecuteProcess
+            exit(exitCode)
+        }
+        // exitCode < 0 means main browser process — continue with normal app startup
+    }
+
     /// Initialize CEF framework. Call once at app startup.
     public func initialize() throws {
         guard !isInitialized else {

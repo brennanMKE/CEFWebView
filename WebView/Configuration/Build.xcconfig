@@ -1,7 +1,16 @@
-// CEF Frameworks are now managed by the CEFWebView package
-// Point to the package's Frameworks directory for runtime and build dependencies
+// CEF Frameworks are managed by the CEFWebView package in the Frameworks directory
+// Configure framework discovery, linking, and runtime resolution
 SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
 FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
+LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
+
+// Runtime framework resolution paths
+// Search in the app bundle's Frameworks folder first, then fall back to package Frameworks
+LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks $(SRCROOT)/../Frameworks"
+
+// Copy frameworks to app bundle during build
+// The Chromium Embedded Framework is copied via a Copy Files build phase
+COPY_PHASE_STRIP = NO
 
 SWIFT_VERSION = 6.0
 SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor

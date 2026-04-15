@@ -7,6 +7,11 @@ import CEFWebView
 struct WebViewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    init() {
+        // Handle CEF subprocess roles before any other initialization
+        CEFApplication.handleSubprocessIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

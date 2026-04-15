@@ -118,6 +118,11 @@ static CefRefPtr<ChromiumClient> g_client;
 
 @implementation CEFWrapper
 
++ (int)executeSubprocessWithArgc:(int)argc argv:(char **)argv {
+    CefMainArgs args(argc, argv);
+    return CefExecuteProcess(args, nullptr, nullptr);
+}
+
 + (BOOL)initializeCEFWithError:(NSError **)error {
     if (g_cefInitialized) {
         NSLog(@"✓ CEF already initialized");
@@ -143,21 +148,9 @@ static CefRefPtr<ChromiumClient> g_client;
     CefSettings settings;
     settings.no_sandbox = 1;
     settings.external_message_pump = 1;
-
-#ifdef CEF_MULTI_PROCESS
-    // Configure CEF for multi-process mode with separate helper executables
-    settings.single_process = 0;
-
-    // Point to the general-purpose helper app bundle for GPU, utility, and network processes
-    NSString* helperPath = [[[NSBundle mainBundle] bundlePath]
-        stringByAppendingPathComponent:@"Contents/Frameworks/CEFHelper.app/Contents/MacOS/CEFHelper"];
-    NSLog(@"🔧 Setting browser_subprocess_path to: %@", helperPath);
-    CefString(&settings.browser_subprocess_path).FromString([helperPath UTF8String]);
-#else
-    // Single-process mode: no subprocess path needed
-    // Note: single_process mode is not supported in CEF 146+
-    // Use multi-process mode by keeping CEF_MULTI_PROCESS defined
-#endif
+    // Leave browser_subprocess_path empty — this tells CEF to use the main app executable
+    // for all subprocess roles (renderer, GPU, utility, network). CefExecuteProcess() at
+    // app startup will detect subprocess roles and handle them accordingly.
 
     // Enable verbose CEF logging to debug page rendering issues
     settings.log_severity = LOGSEVERITY_VERBOSE;

@@ -15,6 +15,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// Objective-C wrapper exposing CEF functionality to Swift
 @interface CEFWrapper : NSObject
 
+/// Handle subprocess role detection — call this at the very start of the app, before any CEF initialization
+/// Returns the subprocess exit code if this process is a CEF subprocess (renderer, GPU, utility, network)
+/// Returns -1 if this is the main browser process and should continue with normal app startup
+/// If subprocess is detected, this method does not return — the process exits with the returned code
++ (int)executeSubprocessWithArgc:(int)argc argv:(char * _Nullable * _Nullable)argv;
+
 /// Initialize CEF framework
 /// Must be called on the main thread, once at app startup
 + (BOOL)initializeCEFWithError:(NSError **)error;
