@@ -31,6 +31,7 @@ write_plist() {
   local plist="$1"
   local bundle_id="$2"
   local bundle_display="$3"
+  local exe_name="$4"
   cat > "${plist}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -39,7 +40,7 @@ write_plist() {
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>WebView Helper</string>
+	<string>${exe_name}</string>
 	<key>CFBundleIdentifier</key>
 	<string>${bundle_id}</string>
 	<key>CFBundleName</key>
@@ -81,8 +82,9 @@ EOF
 install_bundle() {
   local folder_name="$1"
   local exe_src="$2"
-  local bundle_id="$3"
-  local display_name="$4"
+  local exe_name="$3"
+  local bundle_id="$4"
+  local display_name="$5"
   local app_path="${FW_DIR}/${folder_name}.app"
   local macos_dir="${app_path}/Contents/MacOS"
 
@@ -99,17 +101,17 @@ install_bundle() {
   fi
 
   mkdir -p "${macos_dir}"
-  cp -f "${exe_src}" "${macos_dir}/WebView Helper"
-  chmod +x "${macos_dir}/WebView Helper"
+  cp -f "${exe_src}" "${macos_dir}/${exe_name}"
+  chmod +x "${macos_dir}/${exe_name}"
 
   # Verify copied executable is not empty
-  local copied_size=$(stat -f%z "${macos_dir}/WebView Helper" 2>/dev/null || stat -c%s "${macos_dir}/WebView Helper" 2>/dev/null || echo 0)
+  local copied_size=$(stat -f%z "${macos_dir}/${exe_name}" 2>/dev/null || stat -c%s "${macos_dir}/${exe_name}" 2>/dev/null || echo 0)
   if [[ ${copied_size} -eq 0 ]]; then
-    echo "error: Failed to copy executable or file is empty: ${macos_dir}/WebView Helper"
+    echo "error: Failed to copy executable or file is empty: ${macos_dir}/${exe_name}"
     exit 1
   fi
 
-  write_plist "${app_path}/Contents/Info.plist" "${bundle_id}" "${display_name}"
+  write_plist "${app_path}/Contents/Info.plist" "${bundle_id}" "${display_name}" "${exe_name}"
 
   # Verify Info.plist was created and is not empty
   if [[ ! -f "${app_path}/Contents/Info.plist" ]] || [[ ! -s "${app_path}/Contents/Info.plist" ]]; then
@@ -122,9 +124,9 @@ install_bundle() {
 ENTITLEMENTS_FILE="/tmp/webview_entitlements_$$.plist"
 write_entitlements "${ENTITLEMENTS_FILE}"
 
-install_bundle "WebView Helper" "${HELPER_GEN}" "co.sstools.WebView.helper" "WebView Helper"
-install_bundle "WebView Helper (GPU)" "${HELPER_GEN}" "co.sstools.WebView.helper.gpu" "WebView Helper GPU"
-install_bundle "WebView Helper (Renderer)" "${HELPER_REN}" "co.sstools.WebView.helper.renderer" "WebView Helper Renderer"
+install_bundle "WebView Helper" "${HELPER_GEN}" "WebView Helper" "co.sstools.WebView.helper" "WebView Helper"
+install_bundle "WebView Helper (GPU)" "${HELPER_GEN}" "WebView Helper (GPU)" "co.sstools.WebView.helper.gpu" "WebView Helper GPU"
+install_bundle "WebView Helper (Renderer)" "${HELPER_REN}" "WebView Helper (Renderer)" "co.sstools.WebView.helper.renderer" "WebView Helper Renderer"
 
 sign_app() {
   local app="$1"
@@ -136,7 +138,14 @@ sign_app() {
     exit 1
   fi
 
-  local exe_path="${app}/Contents/MacOS/WebView Helper"
+  # Find the executable by reading Info.plist CFBundleExecutable key
+  local exe_name=$(defaults read "${app}/Contents/Info" CFBundleExecutable 2>/dev/null)
+  if [[ -z "${exe_name}" ]]; then
+    echo "error: Could not determine executable name from Info.plist for ${app}"
+    exit 1
+  fi
+
+  local exe_path="${app}/Contents/MacOS/${exe_name}"
   if [[ ! -f "${exe_path}" ]]; then
     echo "error: Bundle executable not found: ${exe_path}"
     exit 1
@@ -152,6 +161,11 @@ sign_app() {
   local sign_identity="${EXPANDED_CODE_SIGN_IDENTITY:--}"
 
   echo "Code signing ${app} with identity: '${sign_identity}'"
+
+  # Remove existing signatures before re-signing (required for clean rebuilds)
+  echo "  Removing existing signatures from executable and bundle..."
+  codesign --remove-signature "${exe_path}" 2>/dev/null || true
+  codesign --remove-signature "${app}" 2>/dev/null || true
 
   # Sign the executable with entitlements (MUST be done before signing the bundle)
   echo "  Signing executable: ${exe_path}"
@@ -195,7 +209,14 @@ for bundle in "WebView Helper.app" "WebView Helper (GPU).app" "WebView Helper (R
     exit 1
   fi
 
-  exe_path="${bundle_path}/Contents/MacOS/WebView Helper"
+  # Read executable name from Info.plist
+  exe_name=$(defaults read "${bundle_path}/Contents/Info" CFBundleExecutable 2>/dev/null)
+  if [[ -z "${exe_name}" ]]; then
+    echo "error: Could not determine executable name from Info.plist for ${bundle}"
+    exit 1
+  fi
+
+  exe_path="${bundle_path}/Contents/MacOS/${exe_name}"
   if [[ ! -f "${exe_path}" ]]; then
     echo "error: Bundle executable missing: ${exe_path}"
     exit 1
@@ -213,7 +234,7 @@ for bundle in "WebView Helper.app" "WebView Helper (GPU).app" "WebView Helper (R
     exit 1
   fi
 
-  echo "✅ ${bundle} (${exe_size} bytes)"
+  echo "✅ ${bundle} → ${exe_name} (${exe_size} bytes)"
 done
 
 echo ""
