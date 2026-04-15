@@ -1,5 +1,13 @@
 import SwiftUI
 
+// MARK: - Helper Process Status
+
+public struct HelperStatus {
+    public let name: String
+    public var isSpawned: Bool = false
+    public var timestamp: Date?
+}
+
 // MARK: - Observable State
 
 @MainActor
@@ -13,6 +21,12 @@ public final class CEFWebViewState {
     public var canGoForward: Bool = false
     /// Error message if CEF initialization or browser creation failed. Non-nil indicates a critical failure.
     public var initializationError: String?
+
+    /// Helper process status tracking
+    public var gpuHelperSpawned: Bool = false
+    public var networkHelperSpawned: Bool = false
+    public var storageHelperSpawned: Bool = false
+    public var rendererHelperSpawned: Bool = false
 
     private weak var browserHost: CEFBrowserHost?
 

@@ -85,31 +85,136 @@ install_bundle() {
   local display_name="$4"
   local app_path="${FW_DIR}/${folder_name}.app"
   local macos_dir="${app_path}/Contents/MacOS"
+
+  # Verify source executable exists and is not empty
+  if [[ ! -f "${exe_src}" ]]; then
+    echo "error: Source executable not found: ${exe_src}"
+    exit 1
+  fi
+
+  local exe_size=$(stat -f%z "${exe_src}" 2>/dev/null || stat -c%s "${exe_src}" 2>/dev/null || echo 0)
+  if [[ ${exe_size} -eq 0 ]]; then
+    echo "error: Source executable is empty (0 bytes): ${exe_src}"
+    exit 1
+  fi
+
   mkdir -p "${macos_dir}"
   cp -f "${exe_src}" "${macos_dir}/WebView Helper"
   chmod +x "${macos_dir}/WebView Helper"
+
+  # Verify copied executable is not empty
+  local copied_size=$(stat -f%z "${macos_dir}/WebView Helper" 2>/dev/null || stat -c%s "${macos_dir}/WebView Helper" 2>/dev/null || echo 0)
+  if [[ ${copied_size} -eq 0 ]]; then
+    echo "error: Failed to copy executable or file is empty: ${macos_dir}/WebView Helper"
+    exit 1
+  fi
+
   write_plist "${app_path}/Contents/Info.plist" "${bundle_id}" "${display_name}"
-  write_entitlements "${app_path}/Contents/Info.plist.entitlements"
+
+  # Verify Info.plist was created and is not empty
+  if [[ ! -f "${app_path}/Contents/Info.plist" ]] || [[ ! -s "${app_path}/Contents/Info.plist" ]]; then
+    echo "error: Failed to create Info.plist for ${folder_name}: ${app_path}/Contents/Info.plist"
+    exit 1
+  fi
 }
+
+# Create entitlements file (temp location, not in bundle)
+ENTITLEMENTS_FILE="/tmp/webview_entitlements_$$.plist"
+write_entitlements "${ENTITLEMENTS_FILE}"
 
 install_bundle "WebView Helper" "${HELPER_GEN}" "co.sstools.WebView.helper" "WebView Helper"
 install_bundle "WebView Helper (GPU)" "${HELPER_GEN}" "co.sstools.WebView.helper.gpu" "WebView Helper GPU"
 install_bundle "WebView Helper (Renderer)" "${HELPER_REN}" "co.sstools.WebView.helper.renderer" "WebView Helper Renderer"
 
-if [[ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]] && [[ "${EXPANDED_CODE_SIGN_IDENTITY}" != "-" ]]; then
-  sign_app() {
-    local app="$1"
-    local entitlements="${app}/Contents/Info.plist.entitlements"
-    # Sign the executable with entitlements
-    codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY}" --entitlements "${entitlements}" \
-      --timestamp=none --options runtime "${app}/Contents/MacOS/WebView Helper" 2>/dev/null || true
-    # Sign the app bundle with entitlements
-    codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY}" --entitlements "${entitlements}" \
-      --timestamp=none --options runtime "${app}" 2>/dev/null || true
-  }
-  sign_app "${FW_DIR}/WebView Helper.app"
-  sign_app "${FW_DIR}/WebView Helper (GPU).app"
-  sign_app "${FW_DIR}/WebView Helper (Renderer).app"
-fi
+sign_app() {
+  local app="$1"
+  local entitlements="$2"
 
+  # Verify bundle structure exists
+  if [[ ! -d "${app}/Contents/MacOS" ]]; then
+    echo "error: Bundle structure missing: ${app}/Contents/MacOS"
+    exit 1
+  fi
+
+  local exe_path="${app}/Contents/MacOS/WebView Helper"
+  if [[ ! -f "${exe_path}" ]]; then
+    echo "error: Bundle executable not found: ${exe_path}"
+    exit 1
+  fi
+
+  local exe_size=$(stat -f%z "${exe_path}" 2>/dev/null || stat -c%s "${exe_path}" 2>/dev/null || echo 0)
+  if [[ ${exe_size} -eq 0 ]]; then
+    echo "error: Bundle executable is empty (0 bytes): ${exe_path}"
+    exit 1
+  fi
+
+  # Determine code sign identity - use development identity if available, fallback to ad-hoc
+  local sign_identity="${EXPANDED_CODE_SIGN_IDENTITY:--}"
+
+  echo "Code signing ${app} with identity: '${sign_identity}'"
+
+  # Sign the executable with entitlements (MUST be done before signing the bundle)
+  echo "  Signing executable: ${exe_path}"
+  if ! codesign --force --sign "${sign_identity}" --entitlements "${entitlements}" \
+    --timestamp=none --options runtime "${exe_path}"; then
+    echo "error: Failed to code sign executable: ${exe_path}"
+    exit 1
+  fi
+
+  # Sign the app bundle with entitlements
+  echo "  Signing bundle: ${app}"
+  if ! codesign --force --sign "${sign_identity}" --entitlements "${entitlements}" \
+    --timestamp=none --options runtime "${app}"; then
+    echo "error: Failed to code sign bundle: ${app}"
+    exit 1
+  fi
+
+  # Verify entitlements were embedded
+  echo "  Verifying signature:"
+  if ! codesign -dv "${exe_path}" 2>&1 | head -15; then
+    echo "error: Code signature verification failed: ${exe_path}"
+    exit 1
+  fi
+}
+
+sign_app "${FW_DIR}/WebView Helper.app" "${ENTITLEMENTS_FILE}"
+sign_app "${FW_DIR}/WebView Helper (GPU).app" "${ENTITLEMENTS_FILE}"
+sign_app "${FW_DIR}/WebView Helper (Renderer).app" "${ENTITLEMENTS_FILE}"
+
+# Clean up temp entitlements file
+rm -f "${ENTITLEMENTS_FILE}"
+
+# Final validation: verify all bundles are properly created
+echo ""
+echo "Final validation:"
+for bundle in "WebView Helper.app" "WebView Helper (GPU).app" "WebView Helper (Renderer).app"; do
+  bundle_path="${FW_DIR}/${bundle}"
+
+  if [[ ! -d "${bundle_path}" ]]; then
+    echo "error: Bundle directory missing: ${bundle_path}"
+    exit 1
+  fi
+
+  exe_path="${bundle_path}/Contents/MacOS/WebView Helper"
+  if [[ ! -f "${exe_path}" ]]; then
+    echo "error: Bundle executable missing: ${exe_path}"
+    exit 1
+  fi
+
+  exe_size=$(stat -f%z "${exe_path}" 2>/dev/null || stat -c%s "${exe_path}" 2>/dev/null || echo 0)
+  if [[ ${exe_size} -eq 0 ]]; then
+    echo "error: Bundle executable is empty (0 bytes): ${exe_path}"
+    exit 1
+  fi
+
+  plist_path="${bundle_path}/Contents/Info.plist"
+  if [[ ! -f "${plist_path}" ]] || [[ ! -s "${plist_path}" ]]; then
+    echo "error: Bundle Info.plist missing or empty: ${plist_path}"
+    exit 1
+  fi
+
+  echo "✅ ${bundle} (${exe_size} bytes)"
+done
+
+echo ""
 echo "embed_cef_helpers: done."

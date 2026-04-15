@@ -1,6 +1,9 @@
 import AppKit
 import CEFWrapper
 import SwiftUI
+import os.log
+
+private let logger = Logger(subsystem: "co.sstools.CEFWebView", category: "CEFWebView")
 
 /// Hosting view that tells CEF when SwiftUI/AppKit changes its size (required for SetAsChild / windowed embedding).
 private final class CEFBrowserContainerView: NSView {
@@ -8,21 +11,20 @@ private final class CEFBrowserContainerView: NSView {
     override var isFlipped: Bool { true }
 
     override var intrinsicContentSize: NSSize {
-        // Return current bounds if available, otherwise a sensible minimum
-        // The parent (GeometryReader) will override this with actual size
-        if !bounds.isEmpty {
-            return bounds.size
-        }
-        return NSSize(width: 100, height: 100)
+        // No intrinsic size - let SwiftUI frame dictate the size
+        return NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
     }
 
     override func layout() {
         super.layout()
+        logger.debug("📐 CEFBrowserContainerView.layout() called, bounds: \(NSStringFromRect(self.bounds))")
         CEFWrapper.notifyBrowserViewGeometryChanged()
     }
 
     override func setFrameSize(_ newSize: NSSize) {
+        logger.debug("📏 CEFBrowserContainerView.setFrameSize(\(NSStringFromSize(newSize))) called")
         super.setFrameSize(newSize)
+        logger.debug("📏 After setFrameSize, bounds: \(NSStringFromRect(self.bounds))")
         CEFWrapper.notifyBrowserViewGeometryChanged()
     }
 }
@@ -39,87 +41,138 @@ public struct CEFWebView: NSViewRepresentable {
     }
 
     public func makeNSView(context: Context) -> NSView {
-        print("\n📱 CEFWebView.makeNSView called")
+        logger.info("🔍 [1/3 CRITICAL PATH] CEFWebView.makeNSView ENTRY")
 
-        // Create container view with zero frame — updateNSView will set the proper size based on parent bounds
+        // Create container view — will be sized by SwiftUI layout system
         let container = CEFBrowserContainerView(frame: .zero)
+        logger.debug("📦 Created CEFBrowserContainerView with frame: \(NSStringFromRect(container.frame))")
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor.white.cgColor
         container.autoresizesSubviews = true
 
         // Store container for later use
         context.coordinator.container = container
-        // No need to store initial frame since we start with zero and let layout system size us
+        logger.debug("✅ Stored container in coordinator")
 
-        // Initialize CEF on first use
+        // Initialize CEF on first use (only once, safe to call repeatedly)
         do {
+            logger.debug("🔧 Attempting CEF initialization...")
             try CEFApplication.shared.initialize()
+            logger.debug("✅ CEFApplication.shared.initialize() succeeded")
         } catch let error as NSError {
             let errorDesc = "CEF Initialization Failed: \(error.localizedDescription)"
-            print("❌ CEF initialization failed: \(errorDesc)")
+            logger.error("❌ CEF initialization failed: \(errorDesc, privacy: .public)")
             state.initializationError = errorDesc
             return container
         } catch {
             let errorDesc = "CEF Initialization Failed: \(error)"
-            print("❌ CEF initialization failed: \(errorDesc)")
+            logger.error("❌ CEF initialization failed: \(errorDesc, privacy: .public)")
             state.initializationError = errorDesc
             return container
         }
 
-        // CEF creates a child NSView inside the container via the Alloy windowed API.
-        let initialURL = url ?? URL(string: "about:blank")!
-        do {
-            let host = try CEFBrowserHost(parentView: container, url: initialURL, state: state)
-            context.coordinator.browserHost = host
-            CEFApplication.shared.activeBrowserHost = host
-            state.setBrowserHost(host)
-            state.currentURL = url
-            context.coordinator.lastNavigationKeyFromBinding = url.map(Self.stableNavigationKey)
-            print("✅ Browser host created with frame: \(container.bounds)")
-            // The browser view was already added as a subview of container by CEFWrapper.
-        } catch let error as CEFError {
-            let errorDesc = error.localizedDescription
-            print("❌ Browser creation failed: \(errorDesc)")
-            state.initializationError = errorDesc
-        } catch {
-            let errorDesc = "Browser Creation Failed: \(error)"
-            print("❌ Browser creation failed: \(errorDesc)")
-            state.initializationError = errorDesc
-        }
+        // DON'T create browser here — we have zero bounds. Wait for updateNSView when view is properly sized.
+        context.coordinator.lastNavigationKeyFromBinding = nil
+        logger.debug("📝 Set lastNavigationKeyFromBinding = nil, waiting for updateNSView...")
 
         return container
     }
 
     public func updateNSView(_ nsView: NSView, context: Context) {
-        guard let host = context.coordinator.browserHost else {
-            print("⚠️  updateNSView: No browser host in coordinator")
+        guard let container = context.coordinator.container else {
+            logger.error("❌ updateNSView: container is nil!")
             return
         }
 
-        // Ensure container fills the parent view (SwiftUI may start at zero size, then assign real bounds).
-        if let container = context.coordinator.container {
-            print("📐 updateNSView: nsView.bounds=\(nsView.bounds), container.frame=\(container.frame)")
-            // Update frame to match parent bounds if available
-            if !nsView.bounds.isEmpty {
+        logger.info("📍 updateNSView called (browserHost: \(context.coordinator.browserHost != nil ? "EXISTS" : "nil"))")
+        logger.info("   - nsView.bounds: \(NSStringFromRect(nsView.bounds))")
+        logger.info("   - nsView.frame: \(NSStringFromRect(nsView.frame))")
+        logger.info("   - container.bounds: \(NSStringFromRect(container.bounds))")
+        logger.info("   - container.frame: \(NSStringFromRect(container.frame))")
+        logger.info("   - browserHost present: \(context.coordinator.browserHost != nil)")
+
+        // Update container frame to match parent bounds
+        if !nsView.bounds.isEmpty {
+            if container.frame != nsView.bounds {
+                logger.debug("📐 updateNSView: Updating container from \(NSStringFromRect(container.frame)) to \(NSStringFromRect(nsView.bounds))")
                 container.frame = nsView.bounds
-                print("📐 updateNSView: Updated container to match parent bounds")
-            } else {
-                print("📐 updateNSView: Parent bounds are zero, keeping current container frame")
+                CEFWrapper.notifyBrowserViewGeometryChanged()
+            }
+        } else {
+            // SwiftUI not sizing the view - use a sensible default so CEF can render
+            let defaultSize = NSSize(width: 800, height: 600)
+            if container.frame.size != defaultSize {
+                logger.warning("⚠️ nsView.bounds is EMPTY, setting default container size: \(NSStringFromSize(defaultSize))")
+                container.frame = NSRect(origin: .zero, size: defaultSize)
+                CEFWrapper.notifyBrowserViewGeometryChanged()
             }
         }
-        CEFWrapper.notifyBrowserViewGeometryChanged()
 
-        // Only load when the *binding* navigation intent changes. Compare stable string keys so
-        // Optional/URL normalization quirks don’t trigger extra loads; do not compare to
-        // `state.currentURL` (redirects diverge from the binding).
+        // Create browser on first updateNSView call (bounds may still be zero, but we need to try)
+        logger.debug("🔍 Checking browser creation: browserHost=\(context.coordinator.browserHost != nil)")
+        if context.coordinator.browserHost == nil {
+            logger.info("🔍 [2/3 CRITICAL PATH] First updateNSView - creating browser")
+            let initialURL = url ?? URL(string: "about:blank")!
+            logger.debug("📋 Initial URL: \(initialURL.absoluteString)")
+            logger.debug("📐 Container bounds: \(NSStringFromRect(container.bounds))")
+            logger.debug("📐 NSView bounds: \(NSStringFromRect(nsView.bounds))")
+
+            do {
+                logger.debug("🔧 Calling CEFBrowserHost.init()...")
+                let host = try CEFBrowserHost(parentView: container, url: initialURL, state: state)
+                logger.debug("✅ CEFBrowserHost created successfully")
+
+                context.coordinator.browserHost = host
+                logger.debug("✅ Stored browserHost in coordinator")
+
+                CEFApplication.shared.activeBrowserHost = host
+                logger.debug("✅ Set activeBrowserHost on CEFApplication")
+
+                state.setBrowserHost(host)
+                logger.debug("✅ Set browserHost on state")
+
+                state.currentURL = url
+                context.coordinator.lastNavigationKeyFromBinding = url.map(Self.stableNavigationKey)
+
+                // Load the initial URL immediately after browser creation
+                // (updateNSView may not be called again after this, so do it now)
+                if let urlToLoad = url {
+                    logger.info("🔍 Loading initial URL immediately: \(urlToLoad.absoluteString)")
+                    host.loadURL(urlToLoad)
+                }
+
+                logger.info("✅ [2/3 CRITICAL PATH] CEFBrowserHost initialized successfully")
+            } catch let error as CEFError {
+                logger.error("❌ [2/3 CRITICAL PATH] Browser creation failed: \(error.localizedDescription, privacy: .public)")
+                state.initializationError = error.localizedDescription
+                return
+            } catch {
+                logger.error("❌ [2/3 CRITICAL PATH] Browser creation failed: \(String(describing: error), privacy: .public)")
+                state.initializationError = "Browser Creation Failed: \(error)"
+                return
+            }
+        }
+
+        // Now handle URL binding changes
+        guard let host = context.coordinator.browserHost else {
+            logger.debug("⚠️ No browserHost yet")
+            return
+        }
+
         let key = url.map(Self.stableNavigationKey)
+        logger.debug("URL binding check: key=\(key?.prefix(50) ?? "nil"), lastKey=\(context.coordinator.lastNavigationKeyFromBinding?.prefix(50) ?? "nil")")
+
         if key != context.coordinator.lastNavigationKeyFromBinding {
             context.coordinator.lastNavigationKeyFromBinding = key
             if let url {
-                print("📍 Binding URL changed, loading: \(url.absoluteString)")
+                logger.info("🔍 [3/3 CRITICAL PATH] Binding URL changed, calling loadURL: \(url.absoluteString)")
                 host.loadURL(url)
                 state.currentURL = url
+            } else {
+                logger.info("URL is nil, not loading")
             }
+        } else {
+            logger.debug("URL key unchanged, skipping loadURL")
         }
     }
 
@@ -143,6 +196,7 @@ public struct CEFWebView: NSViewRepresentable {
         /// Stable string form of last applied `$url` (see `stableNavigationKey`).
         var lastNavigationKeyFromBinding: String?
     }
+
 }
 
 #Preview {

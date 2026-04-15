@@ -21,6 +21,12 @@
 #include "include/cef_version.h"
 #include "include/wrapper/cef_library_loader.h"
 
+// ─── C Function Bridge Forward Declaration ──────────────────────────────────
+
+extern "C" {
+    void NotifyHelperSpawned(const char* helperType);
+}
+
 // ─── CEF App: command-line switches applied in every process ───────────────────
 //
 // macOS often fails to spawn the GPU process (error 1003) under the default app
@@ -47,6 +53,10 @@ public:
     /// Required when using external_message_pump + CefDoMessageLoopWork; without this, renderer IPC
     /// is not serviced promptly and navigations fail with ERR_ABORTED / blank views.
     void OnScheduleMessagePumpWork(int64_t delay_ms) override {
+        FILE* log = fopen("/tmp/cef_test.log", "a");
+        fprintf(log, "[OnScheduleMessagePumpWork] Called with delay_ms=%lld\n", delay_ms);
+        fflush(log);
+        fclose(log);
         NSLog(@"⏰ OnScheduleMessagePumpWork: delay_ms=%lld", delay_ms);
         if (delay_ms <= 0) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -121,6 +131,12 @@ public:
         NSLog(@"⬇️ OnLoadStart: url=%s isMain=%s",
               frame->GetURL().ToString().c_str(),
               frame->IsMain() ? "YES" : "NO");
+
+        // When main frame starts loading, renderer must be spawned
+        if (frame->IsMain()) {
+            NSLog(@"📢 OnLoadStart: Main frame loading - renderer subprocess required");
+            NotifyHelperSpawned("renderer");
+        }
     }
 
     void OnLoadEnd(CefRefPtr<CefBrowser> browser,
@@ -190,6 +206,7 @@ private:
     IMPLEMENT_REFCOUNTING(ChromiumClient);
 };
 
+
 // ─── Global State ───────────────────────────────────────────────────────────────
 
 static BOOL g_cefInitialized = NO;
@@ -237,6 +254,21 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 // ─── CEFWrapper Implementation ───────────────────────────────────────────────────
 
 @implementation CEFWrapper
+
++ (void)notifyHelperSpawned:(NSString *)helperType {
+    NSLog(@"📢 CEFWrapper.notifyHelperSpawned called with type: %@", helperType);
+
+    if (!helperType) {
+        return;
+    }
+
+    // Post a notification that the Swift side can observe
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"CEFHelperSpawned"
+                                                            object:nil
+                                                          userInfo:@{@"type": helperType}];
+    });
+}
 
 + (int)executeSubprocessWithArgc:(int)argc argv:(char **)argv {
     // Without loading the framework first, CefExecuteProcess jumps through a null stub (crash at 0x0).
@@ -510,20 +542,31 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 }
 
 + (void)loadURL:(NSString *)urlString {
+    FILE* log = fopen("/tmp/cef_test.log", "a");
+    fprintf(log, "[loadURL] Entering with URL: %s, g_browser=%p\n", [urlString UTF8String], g_browser.get());
+
     if (!g_browser) {
+        fprintf(log, "[loadURL] ERROR: No browser instance\n");
+        fclose(log);
         NSLog(@"⚠️  No browser instance");
         return;
     }
 
     CefRefPtr<CefFrame> frame = g_browser->GetMainFrame();
     if (!frame) {
+        fprintf(log, "[loadURL] ERROR: No main frame\n");
+        fclose(log);
         NSLog(@"⚠️  No main frame");
         return;
     }
 
     CefString url;
     url.FromString([urlString UTF8String]);
+    fprintf(log, "[loadURL] Calling frame->LoadURL(%s)\n", [urlString UTF8String]);
     frame->LoadURL(url);
+    fprintf(log, "[loadURL] SUCCESS: Loaded URL: %s\n", [urlString UTF8String]);
+    fflush(log);
+    fclose(log);
     NSLog(@"🌐 Loaded URL: %@", urlString);
 }
 
@@ -577,3 +620,17 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 }
 
 @end
+
+// ─── C Function Bridge Implementation ────────────────────────────────────────
+// These must be defined after @implementation so they can call Objective-C methods
+
+extern "C" {
+    void NotifyHelperSpawned(const char* helperType) {
+        if (!helperType) return;
+        NSString* type = [NSString stringWithUTF8String:helperType];
+        NSLog(@"🚀 [C BRIDGE] Helper spawned: %@", type);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [CEFWrapper notifyHelperSpawned:type];
+        });
+    }
+}

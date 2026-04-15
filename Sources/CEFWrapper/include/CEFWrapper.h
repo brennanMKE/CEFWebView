@@ -72,6 +72,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Get the current page URL (updated on every navigation)
 + (nullable NSString *)currentURL;
 
+/// Internal: Notify that a helper process has spawned (called from C++ notification handler)
++ (void)notifyHelperSpawned:(NSString *)helperType;
+
 @end
 
 NS_ASSUME_NONNULL_END
