@@ -8,8 +8,12 @@ private final class CEFBrowserContainerView: NSView {
     override var isFlipped: Bool { true }
 
     override var intrinsicContentSize: NSSize {
-        // Report a non-zero intrinsic size so SwiftUI doesn’t collapse the view
-        return NSSize(width: 800, height: 600)
+        // Return current bounds if available, otherwise a sensible minimum
+        // The parent (GeometryReader) will override this with actual size
+        if !bounds.isEmpty {
+            return bounds.size
+        }
+        return NSSize(width: 100, height: 100)
     }
 
     override func layout() {
@@ -37,18 +41,15 @@ public struct CEFWebView: NSViewRepresentable {
     public func makeNSView(context: Context) -> NSView {
         print("\n📱 CEFWebView.makeNSView called")
 
-        // Create container view with a default frame
-        // The view will be resized by the layout system, but we need a non-zero initial size
-        // so CEF doesn't create with (0,0,0,0) dimensions
-        let container = CEFBrowserContainerView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        // Create container view with zero frame — updateNSView will set the proper size based on parent bounds
+        let container = CEFBrowserContainerView(frame: .zero)
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor.white.cgColor
         container.autoresizesSubviews = true
 
         // Store container for later use
         context.coordinator.container = container
-        // Store the initial frame so we can restore it if updateNSView gets zero bounds
-        context.coordinator.initialFrame = container.frame
+        // No need to store initial frame since we start with zero and let layout system size us
 
         // Initialize CEF on first use
         do {
@@ -97,21 +98,14 @@ public struct CEFWebView: NSViewRepresentable {
 
         // Ensure container fills the parent view (SwiftUI may start at zero size, then assign real bounds).
         if let container = context.coordinator.container {
-            print("📐 updateNSView: nsView.bounds=\(nsView.bounds), container.frame was \(container.frame)")
-            // Update frame: prefer parent's bounds if non-zero, otherwise restore initial frame
-            let newFrame: NSRect
+            print("📐 updateNSView: nsView.bounds=\(nsView.bounds), container.frame=\(container.frame)")
+            // Update frame to match parent bounds if available
             if !nsView.bounds.isEmpty {
-                newFrame = nsView.bounds
-                print("📐 updateNSView: Using parent bounds \(newFrame)")
-            } else if !context.coordinator.initialFrame.isEmpty {
-                newFrame = context.coordinator.initialFrame
-                print("📐 updateNSView: Using initial frame \(newFrame) (parent bounds are zero)")
+                container.frame = nsView.bounds
+                print("📐 updateNSView: Updated container to match parent bounds")
             } else {
-                print("📐 updateNSView: Both parent and initial bounds are zero, skipping resize")
-                newFrame = container.frame
+                print("📐 updateNSView: Parent bounds are zero, keeping current container frame")
             }
-            container.frame = newFrame
-            print("📐 updateNSView: container.frame set to \(container.frame)")
         }
         CEFWrapper.notifyBrowserViewGeometryChanged()
 
@@ -146,7 +140,6 @@ public struct CEFWebView: NSViewRepresentable {
     public class Coordinator {
         var browserHost: CEFBrowserHost?
         var container: NSView?
-        var initialFrame: NSRect = .zero
         /// Stable string form of last applied `$url` (see `stableNavigationKey`).
         var lastNavigationKeyFromBinding: String?
     }
