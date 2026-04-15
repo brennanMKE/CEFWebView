@@ -1,0 +1,12 @@
+// CEF Frameworks are now managed by the CEFWebView package
+// Point to the package's Frameworks directory for runtime and build dependencies
+SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
+FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
+
+SWIFT_VERSION = 6.0
+SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+
+// allow running scripts from Build Phase scripts
+ENABLE_USER_SCRIPT_SANDBOXING = NO
+
+CODE_SIGN_ENTITLEMENTS = WebView/WebView.entitlements
