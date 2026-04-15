@@ -72,12 +72,12 @@ struct ContentView: View {
                 .background(Color.gray.opacity(0.1))
             }
 
-            // Web view with explicit geometry
-            GeometryReader { geometry in
-                CEFWebView(url: $url, state: $webState)
-                    .background(.white)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-            }
+            // Web view — sizes to fill remaining space
+            CEFWebView(url: $url, state: $webState)
+                .background(.white)
+                .onGeometryChange(for: CGSize.self, of: { $0.size }) { newSize in
+                    print("📐 CEFWebView geometry changed: \(newSize)")
+                }
         }
         .onAppear {
             urlInput = url?.absoluteString ?? ""
