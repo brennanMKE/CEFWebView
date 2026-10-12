@@ -1,5 +1,4 @@
 import AppKit
-import CEFWrapper
 import SwiftUI
 import os.log
 
@@ -7,6 +6,8 @@ private let logger = Logger(subsystem: "co.sstools.CEFWebView", category: "CEFWe
 
 /// Hosting view that tells CEF when SwiftUI/AppKit changes its size (required for SetAsChild / windowed embedding).
 private final class CEFBrowserContainerView: NSView {
+    weak var browserHost: CEFBrowserHost?
+
     /// Match top-left origin with Chromium’s SetAsChild expectations (default NSView is bottom-left).
     override var isFlipped: Bool { true }
 
@@ -22,14 +23,14 @@ private final class CEFBrowserContainerView: NSView {
         for subview in subviews where subview.frame != bounds {
             subview.frame = bounds
         }
-        CEFWrapper.notifyBrowserViewGeometryChanged()
+        browserHost?.notifyGeometryChanged()
     }
 
     override func setFrameSize(_ newSize: NSSize) {
         logger.debug("📏 CEFBrowserContainerView.setFrameSize(\(NSStringFromSize(newSize))) called")
         super.setFrameSize(newSize)
         logger.debug("📏 After setFrameSize, bounds: \(NSStringFromRect(self.bounds))")
-        CEFWrapper.notifyBrowserViewGeometryChanged()
+        browserHost?.notifyGeometryChanged()
     }
 }
 
@@ -110,12 +111,10 @@ public struct CEFWebView: NSViewRepresentable {
                 logger.debug("✅ CEFBrowserHost created successfully")
 
                 context.coordinator.browserHost = host
+                (container as? CEFBrowserContainerView)?.browserHost = host
                 logger.debug("✅ Stored browserHost in coordinator")
                 // Size the newly added CEF view to the container (see CEFBrowserContainerView.layout()).
                 container.needsLayout = true
-
-                CEFApplication.shared.activeBrowserHost = host
-                logger.debug("✅ Set activeBrowserHost on CEFApplication")
 
                 state.setBrowserHost(host)
                 logger.debug("✅ Set browserHost on state")
@@ -176,7 +175,7 @@ public struct CEFWebView: NSViewRepresentable {
 
     public static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
         coordinator.browserHost?.close()
-        CEFApplication.shared.activeBrowserHost = nil
+        coordinator.browserHost = nil
     }
 
     public class Coordinator {

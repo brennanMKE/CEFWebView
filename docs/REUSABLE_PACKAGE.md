@@ -40,6 +40,8 @@ Each `CEFWebView` must own its own browser. Today a second view overwrites the g
 
 **Done when:** two windows each show a different site with independent titles, history and loading state, and closing one leaves the other working.
 
+**Status (2026-10-12):** implemented. `CEFBrowserHandle` owns one browser and reports CEF callbacks to a main-actor delegate; `CEFWrapper` keeps only process-wide work and a registry of open browsers. `CEFWrapper.shutdown` closes any remaining browsers and waits for `OnBeforeClose` before `CefShutdown`. Also fixed along the way: Chromium's `CrAppProtocol` is now provided on `NSApplication` (SwiftUI owns the app class, and closing a browser threw an unrecognized-selector exception), and `OnRenderProcessTerminated` now matches the CEF 154 signature so it actually fires. Verified: two windows create two browsers, closing one leaves the other running, and quitting closes both cleanly. Not yet verified by hand: different sites in each window with independent titles and history.
+
 ## Workstream 2: Distribution
 
 The package must resolve by version with no local CEF build. That means shipping CEF as a prebuilt binary target and removing every `unsafeFlags`, which SwiftPM rejects in versioned dependencies.
@@ -113,7 +115,7 @@ Several settings were chosen to get the demo running and are unsafe or slow in a
 | Logging | `LOGSEVERITY_VERBOSE`, `--v=3`, `enable-logging` | Warnings and errors; verbose only by configuration |
 | Cookie encryption | `--use-mock-keychain` (cookies unencrypted on disk) | Real keychain under a stable team signature; mock keychain only for ad-hoc debug builds |
 | Profile path | `~/Library/Caches/com.chromium.webview` for every app | `~/Library/Application Support/<bundle id>/CEF`, since Caches can be purged |
-| State updates | Swift polls CEF 4 times a second | CEF callbacks post to the main actor; remove the timer |
+| State updates | ~~Swift polls CEF 4 times a second~~ Done: CEF callbacks post to the main actor | CEF callbacks post to the main actor; remove the timer |
 | Message pump | Scheduled work plus a 30 Hz fallback timer | Keep; this matches CEF's own Mac sample |
 | `CefShutdown` | Called when the view goes away | Called once at app termination (Workstream 1) |
 

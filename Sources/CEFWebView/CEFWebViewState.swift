@@ -61,6 +61,13 @@ public final class CEFWebViewState {
         self.browserHost = host
     }
 
+    /// Clears a previous main-frame failure when a new navigation starts.
+    internal func clearLoadError() {
+        rendererHelperFailed = false
+        lastMainFrameLoadErrorCode = nil
+        lastMainFrameLoadErrorText = nil
+    }
+
     public func reload() {
         browserHost?.reload()
     }
