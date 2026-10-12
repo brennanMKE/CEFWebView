@@ -18,6 +18,10 @@ private final class CEFBrowserContainerView: NSView {
     override func layout() {
         super.layout()
         logger.debug("📐 CEFBrowserContainerView.layout() called, bounds: \(NSStringFromRect(self.bounds))")
+        // SetAsChild sizes the CEF view once at creation; keep it filling the container afterwards.
+        for subview in subviews where subview.frame != bounds {
+            subview.frame = bounds
+        }
         CEFWrapper.notifyBrowserViewGeometryChanged()
     }
 
@@ -91,23 +95,6 @@ public struct CEFWebView: NSViewRepresentable {
         logger.info("   - container.frame: \(NSStringFromRect(container.frame))")
         logger.info("   - browserHost present: \(context.coordinator.browserHost != nil)")
 
-        // Update container frame to match parent bounds
-        if !nsView.bounds.isEmpty {
-            if container.frame != nsView.bounds {
-                logger.debug("📐 updateNSView: Updating container from \(NSStringFromRect(container.frame)) to \(NSStringFromRect(nsView.bounds))")
-                container.frame = nsView.bounds
-                CEFWrapper.notifyBrowserViewGeometryChanged()
-            }
-        } else {
-            // SwiftUI not sizing the view - use a sensible default so CEF can render
-            let defaultSize = NSSize(width: 800, height: 600)
-            if container.frame.size != defaultSize {
-                logger.warning("⚠️ nsView.bounds is EMPTY, setting default container size: \(NSStringFromSize(defaultSize))")
-                container.frame = NSRect(origin: .zero, size: defaultSize)
-                CEFWrapper.notifyBrowserViewGeometryChanged()
-            }
-        }
-
         // Create browser on first updateNSView call (bounds may still be zero, but we need to try)
         logger.debug("🔍 Checking browser creation: browserHost=\(context.coordinator.browserHost != nil)")
         if context.coordinator.browserHost == nil {
@@ -124,6 +111,8 @@ public struct CEFWebView: NSViewRepresentable {
 
                 context.coordinator.browserHost = host
                 logger.debug("✅ Stored browserHost in coordinator")
+                // Size the newly added CEF view to the container (see CEFBrowserContainerView.layout()).
+                container.needsLayout = true
 
                 CEFApplication.shared.activeBrowserHost = host
                 logger.debug("✅ Set activeBrowserHost on CEFApplication")

@@ -10,12 +10,12 @@ case "${SWIFT_CFG}" in
   *) SWIFT_CFG="debug" ;;
 esac
 
-ARCH="$(uname -m)"
 echo "embed_cef_helpers: swift build -c ${SWIFT_CFG} (package: ${PACKAGE_ROOT})"
 cd "${PACKAGE_ROOT}"
 xcrun swift build -c "${SWIFT_CFG}"
 
-BUILD_BIN="${PACKAGE_ROOT}/.build/${ARCH}-apple-macosx/${SWIFT_CFG}"
+# Ask SwiftPM where it put the products; the .build layout differs across toolchain versions.
+BUILD_BIN="$(xcrun swift build -c "${SWIFT_CFG}" --show-bin-path)"
 HELPER_GEN="${BUILD_BIN}/CEFHelper"
 HELPER_REN="${BUILD_BIN}/CEFHelperRenderer"
 
@@ -160,6 +160,13 @@ sign_app() {
   # Determine code sign identity - use development identity if available, fallback to ad-hoc
   local sign_identity="${EXPANDED_CODE_SIGN_IDENTITY:--}"
 
+  # Hardened runtime enables library validation, which rejects ad-hoc signed CEF (no Team ID),
+  # so only opt into it when signing with a real identity.
+  local runtime_opts=(--options runtime)
+  if [[ "${sign_identity}" == "-" ]]; then
+    runtime_opts=()
+  fi
+
   echo "Code signing ${app} with identity: '${sign_identity}'"
 
   # Remove existing signatures before re-signing (required for clean rebuilds)
@@ -170,7 +177,7 @@ sign_app() {
   # Sign the executable with entitlements (MUST be done before signing the bundle)
   echo "  Signing executable: ${exe_path}"
   if ! codesign --force --sign "${sign_identity}" --entitlements "${entitlements}" \
-    --timestamp=none --options runtime "${exe_path}"; then
+    --timestamp=none ${runtime_opts[@]+"${runtime_opts[@]}"} "${exe_path}"; then
     echo "error: Failed to code sign executable: ${exe_path}"
     exit 1
   fi
@@ -178,7 +185,7 @@ sign_app() {
   # Sign the app bundle with entitlements
   echo "  Signing bundle: ${app}"
   if ! codesign --force --sign "${sign_identity}" --entitlements "${entitlements}" \
-    --timestamp=none --options runtime "${app}"; then
+    --timestamp=none ${runtime_opts[@]+"${runtime_opts[@]}"} "${app}"; then
     echo "error: Failed to code sign bundle: ${app}"
     exit 1
   fi

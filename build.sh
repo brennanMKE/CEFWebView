@@ -124,7 +124,7 @@ Generated: $(date)
 ## Build Info
 - Configuration: Release
 - Xcode Version: $(xcodebuild -version)
-- CEF Version: 146.0.10
+- CEF Version: $(grep -m1 '^CEF_VERSION=' "$PROJECT_DIR/build_cpp.sh" | sed -E 's/.*:-([^}]*)}.*/\1/')
 
 ## Contents
 - WebView.app: macOS application

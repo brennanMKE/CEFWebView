@@ -7,9 +7,9 @@ import os.log
 private let contentLogger = Logger(subsystem: "co.sstools.CEFWebView", category: "ContentView")
 
 struct ContentView: View {
-    @State private var url: URL? = URL(string: "https://google.com")
+    @State private var url: URL? = URL(string: "https://thelastoutpostworkshop.github.io/ESPConnect/")
     @State private var webState = CEFWebViewState()
-    @State private var urlInput: String = "https://google.com"
+    @State private var urlInput: String = "https://thelastoutpostworkshop.github.io/ESPConnect/"
 
     private var statusBarText: String {
         if webState.rendererHelperFailed {

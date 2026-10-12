@@ -6,14 +6,17 @@ set -e  # Exit on error
 
 SRCROOT="${SRCROOT:-.}"
 FRAMEWORKS_DIR="$SRCROOT/Frameworks"
+# Pinned CEF build (https://cef-builds.spotifycdn.com/index.html, macOS ARM64 "Standard Distribution").
+CEF_VERSION="${CEF_VERSION:-154.0.34+g14c5a08+chromium-154.0.8037.98}"
 
 # ─── Helper Functions ────────────────────────────────────────────────────────
 
 # Find the CEF binary directory
 find_cef_dir() {
-    local cef_dir=$(find "$SRCROOT/CEF" -maxdepth 1 -type d -name "cef_binary_*" | head -1)
-    if [ -z "$cef_dir" ]; then
-        echo "❌ Error: Could not find CEF binary directory in $SRCROOT/CEF"
+    local cef_dir="$SRCROOT/CEF/cef_binary_${CEF_VERSION}_macosarm64"
+    if [ ! -d "$cef_dir" ]; then
+        echo "❌ Error: Could not find $cef_dir" >&2
+        echo "   Download cef_binary_${CEF_VERSION}_macosarm64.tar.bz2 into CEF/ and extract it." >&2
         exit 1
     fi
     echo "$cef_dir"
@@ -77,6 +80,8 @@ copy_static_artifacts() {
     local cef_dir="$1"
     echo "📦 Copying static library and headers..."
 
+    # Clear headers from any previous CEF version so stale files don't shadow new ones
+    rm -rf "$FRAMEWORKS_DIR/include"
     mkdir -p "$FRAMEWORKS_DIR/include"
     cp "$cef_dir/libcef_dll_wrapper/Release/libcef_dll_wrapper.a" "$FRAMEWORKS_DIR/"
     cp -R "$cef_dir/include/" "$FRAMEWORKS_DIR/include/"

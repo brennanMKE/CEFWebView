@@ -43,6 +43,44 @@ extern "C" {
 
 namespace {
 
+// ─── External message pump ───────────────────────────────────────────────────
+//
+// Mirrors CEF's MainMessageLoopExternalPumpMac: run work when CEF schedules it, and also on a
+// ~30 Hz fallback timer. Scheduled callbacks alone can be coalesced or missed, which stalls the
+// browser process (requests sent, never answered, blank page stuck on "Loading...").
+
+static bool g_cefPumpActive = false;
+static bool g_cefInMessageLoopWork = false;
+static NSTimer* g_cefPumpTimer = nil;
+
+static void PerformCEFMessageLoopWork() {
+    // CefDoMessageLoopWork can re-enter via nested run loops (menus, modal panels); skip those.
+    if (!g_cefPumpActive || g_cefInMessageLoopWork) {
+        return;
+    }
+    g_cefInMessageLoopWork = true;
+    CefDoMessageLoopWork();
+    g_cefInMessageLoopWork = false;
+}
+
+static void StartCEFMessagePumpTimer() {
+    g_cefPumpActive = true;
+    if (g_cefPumpTimer) {
+        return;
+    }
+    g_cefPumpTimer = [NSTimer timerWithTimeInterval:1.0 / 30.0
+                                            repeats:YES
+                                              block:^(NSTimer*) { PerformCEFMessageLoopWork(); }];
+    // Common modes so the pump keeps running during window resizing and menu tracking.
+    [[NSRunLoop mainRunLoop] addTimer:g_cefPumpTimer forMode:NSRunLoopCommonModes];
+}
+
+static void StopCEFMessagePumpTimer() {
+    g_cefPumpActive = false;
+    [g_cefPumpTimer invalidate];
+    g_cefPumpTimer = nil;
+}
+
 class CEFWebViewApp final : public CefApp, public CefBrowserProcessHandler {
 public:
     CEFWebViewApp() = default;
@@ -55,6 +93,10 @@ public:
         command_line->AppendSwitch("disable-gpu-sandbox");
         // QUIC / HTTP3 can complicate loads on some networks
         command_line->AppendSwitch("disable-quic");
+        // Skip the "Chromium Safe Storage" keychain item. Its ACL is tied to the code signature, so
+        // every rebuild (especially ad-hoc) re-prompts for keychain access. Cookies are stored
+        // unencrypted in the cache dir instead — fine for this demo app, not for a shipping browser.
+        command_line->AppendSwitch("use-mock-keychain");
     }
 
     /// Called before each child process is launched (GPU, utility, renderer, etc.).
@@ -93,12 +135,12 @@ public:
         // NSLog(@"⏰ OnScheduleMessagePumpWork: delay_ms=%lld", delay_ms);
         if (delay_ms <= 0) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                CefDoMessageLoopWork();
+                PerformCEFMessageLoopWork();
             });
         } else {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay_ms * NSEC_PER_MSEC),
                            dispatch_get_main_queue(), ^{
-                CefDoMessageLoopWork();
+                PerformCEFMessageLoopWork();
             });
         }
     }
@@ -585,6 +627,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 
     NSLog(@"✅ CefInitialize succeeded - CEF is now initialized and ready");
     g_cefInitialized = YES;
+    StartCEFMessagePumpTimer();
     return YES;
 }
 
@@ -711,7 +754,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 
 + (void)doMessageLoopWork {
     if (g_cefInitialized) {
-        CefDoMessageLoopWork();
+        PerformCEFMessageLoopWork();
     }
 }
 
@@ -729,6 +772,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     if (!g_cefInitialized) return;
 
     NSLog(@"🛑 Shutting down CEF");
+    StopCEFMessagePumpTimer();
 
     // Release the browser and client references
     g_browser = nullptr;

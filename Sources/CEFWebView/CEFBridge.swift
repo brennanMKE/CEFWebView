@@ -2,7 +2,7 @@ import Cocoa
 import CEFWrapper
 import os.log
 
-nonisolated(unsafe) let cefLogger = Logger(subsystem: "co.sstools.CEFWebView", category: "CEFApplication")
+nonisolated let cefLogger = Logger(subsystem: "co.sstools.CEFWebView", category: "CEFApplication")
 
 // MARK: - CEF Application Lifecycle Manager
 
@@ -282,6 +282,8 @@ public final class CEFApplication {
 @MainActor
 public final class CEFBrowserHost {
     private var isAlive = true
+    /// Polls CEF's load/title/history state; CEF callbacks don't push into SwiftUI directly.
+    private var stateTimer: Timer?
     /// Observable SwiftUI state; internal so `CEFApplication` can merge accumulated helper-spawn flags.
     internal weak var state: CEFWebViewState?
 
@@ -306,6 +308,12 @@ public final class CEFBrowserHost {
         if let state {
             CEFApplication.shared.applyAccumulatedHelperFlags(to: state)
         }
+
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateState() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        stateTimer = timer
     }
 
     /// Load a URL in the browser.
@@ -342,20 +350,29 @@ public final class CEFBrowserHost {
     }
 
     /// Update state from CEF's current values.
+    /// Only assigns changed values so polling doesn't invalidate SwiftUI views on every tick.
     func updateState() {
-        state?.isLoading = CEFWrapper.isLoading()
-        state?.canGoBack = CEFWrapper.canGoBack()
-        state?.canGoForward = CEFWrapper.canGoForward()
-        state?.title = CEFWrapper.currentTitle()
+        guard let state else { return }
+        let isLoading = CEFWrapper.isLoading()
+        if state.isLoading != isLoading { state.isLoading = isLoading }
+        let canGoBack = CEFWrapper.canGoBack()
+        if state.canGoBack != canGoBack { state.canGoBack = canGoBack }
+        let canGoForward = CEFWrapper.canGoForward()
+        if state.canGoForward != canGoForward { state.canGoForward = canGoForward }
+        let title = CEFWrapper.currentTitle()
+        if state.title != title { state.title = title }
         if let urlString = CEFWrapper.currentURL(),
-           let url = URL(string: urlString) {
-            state?.currentURL = url
+           let url = URL(string: urlString),
+           state.currentURL != url {
+            state.currentURL = url
         }
     }
 
     func close() {
         guard isAlive else { return }
         isAlive = false
+        stateTimer?.invalidate()
+        stateTimer = nil
         CEFWrapper.closeBrowser()
     }
 }
