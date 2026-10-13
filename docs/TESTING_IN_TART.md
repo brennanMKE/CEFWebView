@@ -29,6 +29,7 @@ Results land in `build/vm-tests/<run-id>/`. The script exits with `xcodebuild`'s
 | `Tests.xcresult` | Result bundle, with failure messages |
 | `app.log` | The guest's system log for the app and helpers: `CEFWrapper`'s `NSLog` lines, including renderer crashes (`OnRenderProcessTerminated`) |
 | `chrome_debug.log` | Chromium's own warnings and errors |
+| `crashes/` | Crash reports (`.ips`) for the app and its helpers, such as a renderer that died |
 
 ```sh
 Scripts/run-tests-vm.sh --ref HEAD                 # a commit instead of the working tree

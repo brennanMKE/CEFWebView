@@ -108,6 +108,8 @@ The view needs the basics developers expect from `WKWebView` before it is worth 
 
 **Done when:** the demo app uses JavaScript evaluation, a message handler, a navigation policy and pop-up handling, and all are covered by tests.
 
+**Status (2026-10-12):** done. `CEFWebViewState` has `evaluateJavaScript(_:)` (promises awaited, results JSON-decoded), `setMessageHandler(_:_:)` for `window.cefWebView.postMessage(name, body)` from any frame, `navigationPolicy`, `newWindowPolicy` (CEF's unmanaged pop-up windows are never opened), `downloadPolicy` and `downloads`, `find(_:)`, `pageZoom`, `lastError`, `processStatus` (replacing the per-helper flags), `stopLoading()` and `loadHTML(_:)`; `CEFConfiguration.userAgent` and `CEFApplication.deleteAllCookies()`. The renderer side lives in `CEFRenderProcess.mm`. The demo uses all of it. 15 integration tests in `WebViewTests` cover it and run only in a Tart VM (`Scripts/run-tests-vm.sh`, [TESTING_IN_TART.md](TESTING_IN_TART.md)); package unit tests cover the pure Swift parts. Not done: file pickers (CEF's default dialog is untested), separate profiles per view, and a per-view `CEFWebViewConfiguration`; process-wide settings stay in `CEFConfiguration`. Known CEF 154 issue: a `srcdoc` iframe in a `data:` URL page crashes the renderer.
+
 ## Workstream 5: Production defaults
 
 Several settings were chosen to get the demo running and are unsafe or slow in a shipping app.
@@ -144,7 +146,7 @@ Several settings were chosen to get the demo running and are unsafe or slow in a
 | M1: Correct core | 1, and the state-callback part of 5 | Two independent views; no polling; clean shutdown |
 | M2: Installable (done) | 2, 3 | Fresh app adds the package by version and runs with one script phase |
 | M3: Shippable | rest of 5, notarization from 3 | Release build with GPU and sandbox on, notarized |
-| M4: Useful API | 4 | JavaScript, messaging, navigation policy, pop-ups, progress |
+| M4: Useful API (done) | 4 | JavaScript, messaging, navigation policy, pop-ups, progress |
 | M5: Maintained | 6 | CI on every PR, README install guide, documented CEF update process |
 
 M1 comes first because Workstreams 2 to 4 all build on the per-browser object. M2 and M3 can run in parallel once M1 lands.

@@ -83,7 +83,8 @@ public final class CEFWebViewState {
         browserHost?.loadURL(url)
     }
 
-    /// Load an HTML string as a `data:` URL. Relative links in it do not resolve.
+    /// Load an HTML string as a `data:` URL. Relative links in it do not resolve, and CEF 154 crashes the
+    /// renderer if the page contains a `srcdoc` iframe.
     public func loadHTML(_ html: String) {
         let encoded = Data(html.utf8).base64EncodedString()
         if let url = URL(string: "data:text/html;charset=utf-8;base64,\(encoded)") {

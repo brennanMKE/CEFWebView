@@ -78,9 +78,51 @@ A work in progress: see [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md) for
    }
    ```
 
+## Using the API
+
+`CEFWebViewState` is both the view's observable state and the way to control it:
+
+```swift
+// Run JavaScript; promises are awaited. Results arrive JSON-decoded.
+let count = try await state.evaluateJavaScript("document.links.length") as? Int
+
+// Messages from the page: window.cefWebView.postMessage("saved", {id: 42})
+state.setMessageHandler("saved") { message in
+    print(message.body ?? "nil", message.isMainFrame)
+}
+
+// Decide navigations, in any frame, before they start.
+state.navigationPolicy = { action in
+    action.url?.scheme == "mailto" ? .cancel : .allow
+}
+
+// Pop-ups load in place by default. To open your own window instead:
+state.newWindowPolicy = { action in
+    if let url = action.url { openWindow(value: url) }
+    return .block
+}
+
+// Downloads go to ~/Downloads unless a policy picks a destination (or nil to cancel).
+state.downloadPolicy = { request in downloadsFolder.appendingPathComponent(request.suggestedFilename) }
+
+state.find("search text")          // findResult: match count and active match
+state.pageZoom = 1.25
+state.loadHTML("<h1>Hello</h1>")
+```
+
+Also: `lastError` (main-frame load failures), `processStatus`, `downloads`, `stopLoading()`,
+`CEFApplication.shared.deleteAllCookies()`, and `CEFConfiguration.userAgent`.
+
+**Known issue (CEF 154):** a `srcdoc` iframe inside a page loaded from a `data:` URL, including
+`loadHTML(_:)`, crashes the renderer. `srcdoc` in http(s) pages is fine.
+
 ## Developing
 
 The demo app is `WebView/WebView.xcodeproj`, which uses this package from the local checkout.
+
+Tests: `swift test` runs the package's unit tests on the host. The demo's integration and UI tests open
+windows, so they run only in a disposable Tart VM: `Scripts/run-tests-vm.sh`. See
+[docs/TESTING_IN_TART.md](docs/TESTING_IN_TART.md).
 
 `Scripts/update_cef.sh` downloads the pinned CEF distribution, vendors its C++ wrapper into `Sources/CEFDLLWrapper`, and builds `Frameworks/ChromiumEmbeddedFramework.xcframework`. When that folder exists, `Package.swift` uses it instead of the release download. To move to a new CEF version, change `CEF_VERSION` in the script, run it, then follow the release steps it prints.
 

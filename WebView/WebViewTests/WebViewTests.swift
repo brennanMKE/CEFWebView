@@ -149,17 +149,28 @@ struct CEFWebViewAPITests {
     }
 
     @Test func reportsWhetherAMessageCameFromAnIframe() async throws {
-        let frame = "<script>cefWebView.postMessage('frame', 'hi')</script>"
-        let browser = try await Browser(html: "<iframe srcdoc=\"\(frame)\"></iframe>")
+        let browser = try await Browser(html: "<iframe src='about:blank'></iframe>")
         defer { browser.close() }
 
         var received: [CEFScriptMessage] = []
         browser.state.setMessageHandler("frame") { received.append($0) }
-        #expect(browser.state.processStatus.rendererTerminated == false)
-        // The iframe may have posted before the handler was set; post again from it.
-        try await browser.run("document.querySelector('iframe').contentWindow.cefWebView.postMessage('frame', 'again')")
+        try await browser.run("document.querySelector('iframe').contentWindow.cefWebView.postMessage('frame', 'hi')")
         try await browser.waitUntil("a message from the iframe") { !received.isEmpty }
-        #expect(received.allSatisfy { !$0.isMainFrame })
+        #expect(received.first?.isMainFrame == false)
+        #expect(received.first?.body as? String == "hi")
+    }
+
+    /// CEF 154: a `srcdoc` iframe inside a page loaded from a `data:` URL (as `loadHTML(_:)` does)
+    /// crashes the renderer with a CHECK failure. `srcdoc` in an https page, and `about:blank` or
+    /// `data:` iframes in a `data:` page, are fine. Not caused by CEFWebView's script bridge: it
+    /// crashes with the bridge off too.
+    @Test func srcdocIframeInDataURLPageCrashesTheRenderer() async throws {
+        let browser = try await Browser(html: "<iframe srcdoc='<p>hi</p>'></iframe>")
+        defer { browser.close() }
+        try await Task.sleep(for: .seconds(2))
+        withKnownIssue("CEF crashes a renderer that loads a srcdoc iframe in a data: URL page") {
+            #expect(browser.state.processStatus.rendererTerminated == false)
+        }
     }
 
     // MARK: Navigation policy

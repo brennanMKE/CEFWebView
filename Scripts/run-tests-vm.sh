@@ -233,11 +233,12 @@ tart exec "$CLONE" /bin/zsh -lc \
 test_rc=$?
 set -e
 
-# The app's own log lines (CEFWrapper's NSLog, renderer crashes) and Chromium's log file, which
-# xcodebuild's output does not include.
-tart exec "$CLONE" /bin/zsh -lc "log show --last 1h --style compact --info \
+# What xcodebuild's output leaves out: the app's own log lines (CEFWrapper's NSLog), Chromium's log
+# file, and crash reports for the app and its helpers. /usr/bin/log, not zsh's `log` builtin.
+tart exec "$CLONE" /bin/zsh -lc "/usr/bin/log show --last 1h --style compact --info \
     --predicate 'process BEGINSWITH \"WebView\"' > $GUEST_RESULTS/app.log 2>&1; \
-  cp ~/Library/Application\\ Support/*/CEF/chrome_debug.log $GUEST_RESULTS/ 2>/dev/null; true"
+  cp ~/Library/Application\\ Support/*/CEF/chrome_debug.log $GUEST_RESULTS/ 2>/dev/null; \
+  mkdir -p $GUEST_RESULTS/crashes; cp ~/Library/Logs/DiagnosticReports/WebView*.ips $GUEST_RESULTS/crashes/ 2>/dev/null; true"
 
 # --- Results back ----------------------------------------------------------
 
