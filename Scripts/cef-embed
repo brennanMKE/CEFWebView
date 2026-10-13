@@ -39,11 +39,13 @@ fi
 
 # Run SwiftPM in a clean environment: Xcode exports hundreds of build settings (SDKROOT, ARCHS, ...)
 # that are meant for the app target, not for a nested `swift build`.
+# -w: this build treats the package as a root package, so CEF's vendored C++ would otherwise add
+# hundreds of warnings to the host app's build log. Xcode already hides them in its own build.
 swift_build() {
     env -i HOME="${HOME}" PATH="/usr/bin:/bin:/usr/sbin:/sbin" TMPDIR="${TMPDIR:-/tmp}" \
         DEVELOPER_DIR="${DEVELOPER_DIR}" \
         xcrun swift build --package-path "${PACKAGE_DIR}" --scratch-path "${WORK_DIR}/swiftpm" \
-        -c "${SWIFT_CONFIGURATION}" --product CEFHelper "$@"
+        -c "${SWIFT_CONFIGURATION}" --product CEFHelper -Xcc -w "$@"
 }
 
 echo "cef-embed: building CEFHelper (${SWIFT_CONFIGURATION})"
