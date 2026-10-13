@@ -266,15 +266,39 @@ public:
         });
     }
 
+    bool OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
+                        CefRefPtr<CefFrame> frame,
+                        CefRefPtr<CefRequest> request,
+                        bool user_gesture,
+                        bool is_redirect) override {
+        if (frame->IsMain()) {
+            SetMainFrameLoading(true);
+        }
+        return false;
+    }
+
     // CefLoadHandler overrides
+    //
+    // CEF's isLoading stays true while any frame loads, and pages that keep refreshing ad iframes
+    // never go idle. The view reports loading only from the main frame's navigation start until its
+    // load ends or fails, and never while CEF itself is idle.
     void OnLoadingStateChange(CefRefPtr<CefBrowser> browser,
                               bool isLoading, bool canGoBack, bool canGoForward) override {
-        WithDelegate(^(CEFBrowserHandle* handle, id<CEFBrowserHandleDelegate> delegate) {
-            [delegate browserHandle:handle
-                loadingStateChanged:isLoading
-                          canGoBack:canGoBack
-                       canGoForward:canGoForward];
-        });
+        _browserLoading = isLoading;
+        _canGoBack = canGoBack;
+        _canGoForward = canGoForward;
+        if (!isLoading) {
+            _mainFrameLoading = false;
+        }
+        ReportLoadingState();
+    }
+
+    void OnLoadEnd(CefRefPtr<CefBrowser> browser,
+                   CefRefPtr<CefFrame> frame,
+                   int httpStatusCode) override {
+        if (frame->IsMain()) {
+            SetMainFrameLoading(false);
+        }
     }
 
     void OnLoadError(CefRefPtr<CefBrowser> browser,
@@ -282,6 +306,9 @@ public:
                      ErrorCode errorCode,
                      const CefString& errorText,
                      const CefString& failedUrl) override {
+        if (frame->IsMain()) {
+            SetMainFrameLoading(false);
+        }
         // Subframe failures (ads, trackers, blocked embeds) are not document load failures.
         // ERR_ABORTED (-3) is normal for redirects and interrupted navigations.
         if (!frame->IsMain() || errorCode == ERR_ABORTED) {
@@ -325,6 +352,26 @@ public:
     }
 
 private:
+    void SetMainFrameLoading(bool loading) {
+        if (_mainFrameLoading == loading) {
+            return;
+        }
+        _mainFrameLoading = loading;
+        ReportLoadingState();
+    }
+
+    void ReportLoadingState() {
+        bool isLoading = _browserLoading && _mainFrameLoading;
+        bool canGoBack = _canGoBack;
+        bool canGoForward = _canGoForward;
+        WithDelegate(^(CEFBrowserHandle* handle, id<CEFBrowserHandleDelegate> delegate) {
+            [delegate browserHandle:handle
+                loadingStateChanged:isLoading
+                          canGoBack:canGoBack
+                       canGoForward:canGoForward];
+        });
+    }
+
     void WithHandle(void (^block)(CEFBrowserHandle*)) {
         __weak CEFBrowserHandle* weakHandle = _handle;
         RunOnMain(^{
@@ -345,6 +392,11 @@ private:
     }
 
     __weak CEFBrowserHandle* _handle;
+    // Load state, touched only on CEF's UI thread.
+    bool _browserLoading = false;
+    bool _mainFrameLoading = false;
+    bool _canGoBack = false;
+    bool _canGoForward = false;
 
     IMPLEMENT_REFCOUNTING(ChromiumClient);
 };
