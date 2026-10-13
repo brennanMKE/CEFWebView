@@ -1,0 +1,64 @@
+name: CEF release artifact
+
+# Builds the CEF XCFramework zip for a release and attaches it to a draft GitHub release. The
+# checksum is in the job summary; paste it into Package.swift as described in docs/UPDATING_CEF.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, <CEF major>.<CEF patch>.<revision> (for example 154.34.0)
+        required: true
+      cef_version:
+        description: CEF build (blank uses CEF_VERSION in Scripts/update_cef.sh)
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  artifact:
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+
+      - name: Build the XCFramework zip
+        env:
+          CEF_VERSION: ${{ inputs.cef_version }}
+        run: |
+          [[ -n "$CEF_VERSION" ]] || unset CEF_VERSION
+          Scripts/update_cef.sh
+
+      - name: Check the vendored wrapper matches the commit
+        run: |
+          if ! git diff --quiet -- Sources/CEFDLLWrapper; then
+            echo "::error::Sources/CEFDLLWrapper differs from this CEF version. Run Scripts/update_cef.sh locally and commit first."
+            git diff --stat -- Sources/CEFDLLWrapper
+            exit 1
+          fi
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          CEF_INPUT: ${{ inputs.cef_version }}
+        run: |
+          cef="${CEF_INPUT:-$(grep -m1 '^CEF_VERSION=' Scripts/update_cef.sh | sed 's/.*:-\(.*\)}"/\1/')}"
+          zip=.build/release/ChromiumEmbeddedFramework.xcframework.zip
+          checksum="$(swift package compute-checksum "$zip")"
+          gh release create "$TAG" "$zip" --draft --target "$GITHUB_SHA" --title "$TAG" \
+            --notes "CEF $cef"
+          {
+            echo "### $TAG"
+            echo
+            echo "Draft release created with the XCFramework zip. In Package.swift:"
+            echo
+            echo '```swift'
+            echo "let releaseTag = \"$TAG\""
+            echo "let cefChecksum = \"$checksum\""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

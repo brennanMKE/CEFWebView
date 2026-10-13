@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Xcode 27, as the project is built with locally (preview image). Package.swift needs swift-tools 6.3.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          swift --version
+
+      # The CEF framework is a ~145 MB release download; cache SwiftPM's copy between runs.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: swiftpm-${{ hashFiles('Package.swift') }}
+
+      - name: Package unit tests
+        run: swift test
+
+      # A disposable runner, so the demo's integration and UI tests (which open windows) run here
+      # directly. On a developer Mac they run only in a Tart VM: docs/TESTING_IN_TART.md.
+      - name: Demo app build and tests (ad hoc signed)
+        run: |
+          set -o pipefail
+          xcodebuild -project WebView/WebView.xcodeproj -scheme WebView -destination 'platform=macOS' \
+            -resultBundlePath build/Tests.xcresult \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO \
+            test 2>&1 | tee build/xcodebuild.log
+
+      - name: Collect logs
+        if: failure()
+        run: |
+          mkdir -p build/logs
+          cp ~/Library/Application\ Support/*/CEF/chrome_debug.log build/logs/ 2>/dev/null || true
+          cp ~/Library/Logs/DiagnosticReports/WebView*.ips build/logs/ 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: |
+            build/Tests.xcresult
+            build/xcodebuild.log
+            build/logs

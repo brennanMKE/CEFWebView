@@ -2,7 +2,8 @@
 
 A SwiftUI view backed by Chromium, through the [Chromium Embedded Framework](https://bitbucket.org/chromiumembedded/cef) (CEF). macOS 15+, Apple silicon.
 
-A work in progress: see [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md) for what is done and what is left.
+Status and roadmap: [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md). How it works inside:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Installing
 
@@ -18,7 +19,18 @@ A work in progress: see [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md) for
 
 3. **Build settings** on the app target:
    - `ENABLE_USER_SCRIPT_SANDBOXING = NO`, because the script writes into the app bundle.
-   - App Sandbox off. CEF's sandbox is not supported yet.
+   - App Sandbox off: CEF does not support it. Chromium's own sandbox still isolates the helper
+     processes.
+   - Hardened runtime on (for notarization), with these entitlements in the app's entitlements file.
+     V8 compiles JavaScript to machine code; without them pages stay blank. The helpers get the same
+     from `cef-embed`.
+
+     ```xml
+     <key>com.apple.security.cs.allow-jit</key>
+     <true/>
+     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+     <true/>
+     ```
 
 4. **Handle CEF subprocesses first.** The helpers run CEF's subprocess code, but the app must also return early when it is launched in a subprocess role, and shut CEF down on quit:
 
@@ -58,7 +70,9 @@ A work in progress: see [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md) for
    | `gpuEnabled` | `true` | `false` renders in software. |
    | `verboseLogging` | `false` | Chromium logs warnings and errors to `chrome_debug.log` in the profile directory. |
    | `useSystemKeychain` | `false` | Encrypt cookies with a login-keychain key. Chromium names the item "Chromium Safe Storage" in every CEF app, so macOS asks for the login password when another app created it. Ignored for ad-hoc signed builds. |
+   | `systemNotificationsEnabled` | `false` | Let pages show notifications through Notification Center. Off, pages see notification permission denied and Chromium does not register the app with Notification Center. |
    | `profileDirectory` | `nil` | Cookies, local storage and cache. `nil` uses `~/Library/Application Support/<bundle id>/CEF`. |
+   | `userAgent` | `nil` | Replaces Chrome's user agent. |
 
    ```swift
    try CEFApplication.shared.initialize(CEFConfiguration(verboseLogging: true))
@@ -116,6 +130,13 @@ Also: `lastError` (main-frame load failures), `processStatus`, `downloads`, `sto
 **Known issue (CEF 154):** a `srcdoc` iframe inside a page loaded from a `data:` URL, including
 `loadHTML(_:)`, crashes the renderer. `srcdoc` in http(s) pages is fine.
 
+## Shipping
+
+Archive with a Developer ID identity and notarize as for any app. `cef-embed` signs the helpers and
+the framework's dylibs with the app's identity, so the archive notarizes as is. The demo app's
+`Scripts/notarize.sh` shows the whole flow with Xcode's signed-in account: archive, upload, wait,
+staple, check with `spctl`.
+
 ## Developing
 
 The demo app is `WebView/WebView.xcodeproj`, which uses this package from the local checkout.
@@ -124,7 +145,10 @@ Tests: `swift test` runs the package's unit tests on the host. The demo's integr
 windows, so they run only in a disposable Tart VM: `Scripts/run-tests-vm.sh`. See
 [docs/TESTING_IN_TART.md](docs/TESTING_IN_TART.md).
 
-`Scripts/update_cef.sh` downloads the pinned CEF distribution, vendors its C++ wrapper into `Sources/CEFDLLWrapper`, and builds `Frameworks/ChromiumEmbeddedFramework.xcframework`. When that folder exists, `Package.swift` uses it instead of the release download. To move to a new CEF version, change `CEF_VERSION` in the script, run it, then follow the release steps it prints.
+CI (`.github/workflows/ci.yml`) runs the unit tests and the demo's tests on every push and pull
+request, on a disposable GitHub runner.
+
+`Scripts/update_cef.sh` downloads the pinned CEF distribution, vendors its C++ wrapper into `Sources/CEFDLLWrapper`, and builds `Frameworks/ChromiumEmbeddedFramework.xcframework`. When that folder exists, `Package.swift` uses it instead of the release download. Moving to a new CEF version and publishing a release: [docs/UPDATING_CEF.md](docs/UPDATING_CEF.md).
 
 ## License
 
