@@ -14,6 +14,7 @@
 #import <objc/runtime.h>
 
 #include <cstring>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,10 @@
 #include "include/cef_command_line.h"
 #include "include/cef_load_handler.h"
 #include "include/cef_display_handler.h"
+#include "include/cef_cookie.h"
+#include "include/cef_download_handler.h"
+#include "include/cef_find_handler.h"
+#include "CEFRenderProcess.h"
 #include "include/cef_life_span_handler.h"
 #include "include/cef_request_handler.h"
 #include "include/cef_version.h"
@@ -164,8 +169,11 @@ public:
     }
 
     CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
+    CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override { return _renderHandler; }
 
 private:
+    CefRefPtr<CefRenderProcessHandler> _renderHandler = cefwebview::CreateRenderProcessHandler();
+
     IMPLEMENT_REFCOUNTING(CEFWebViewApp);
 };
 
@@ -224,12 +232,20 @@ static void RunOnMain(dispatch_block_t block) {
     }
 }
 
+
 static NSString* NSStringFromCef(const CefString& value) {
     return [NSString stringWithUTF8String:value.ToString().c_str()] ?: @"";
 }
 
 @interface CEFBrowserHandle ()
 - (void)browserDidClose;
+/// A result from the renderer for -evaluateJavaScript:completion:.
+- (void)completeEvaluation:(int)requestID succeeded:(BOOL)succeeded payload:(NSString *)payload;
+/// A new document committed in the main frame (or the renderer went away): evaluations sent to the
+/// previous one will never answer.
+- (void)failPendingEvaluations:(NSString *)reason;
+- (void)rendererDidTerminate;
+- (void)mainFrameDidStartLoading;
 @end
 
 // ─── C++ Client Class ───────────────────────────────────────────────────────────
@@ -242,7 +258,9 @@ class ChromiumClient : public CefClient,
                        public CefLifeSpanHandler,
                        public CefLoadHandler,
                        public CefDisplayHandler,
-                       public CefRequestHandler {
+                       public CefRequestHandler,
+                       public CefFindHandler,
+                       public CefDownloadHandler {
 public:
     explicit ChromiumClient(CEFBrowserHandle* handle) : _handle(handle) {}
 
@@ -251,6 +269,68 @@ public:
     CefRefPtr<CefLoadHandler> GetLoadHandler() override { return this; }
     CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
     CefRefPtr<CefRequestHandler> GetRequestHandler() override { return this; }
+    CefRefPtr<CefFindHandler> GetFindHandler() override { return this; }
+    CefRefPtr<CefDownloadHandler> GetDownloadHandler() override { return this; }
+
+    bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+                                  CefRefPtr<CefFrame> frame,
+                                  CefProcessId source_process,
+                                  CefRefPtr<CefProcessMessage> message) override {
+        CefRefPtr<CefListValue> args = message->GetArgumentList();
+        const std::string name = message->GetName().ToString();
+        if (name == cefwebview::kPostMessage) {
+            NSString* messageName = NSStringFromCef(args->GetString(0));
+            NSString* body = NSStringFromCef(args->GetString(1));
+            BOOL isMainFrame = args->GetBool(2);
+            WithDelegate(^(CEFBrowserHandle* handle, id<CEFBrowserHandleDelegate> delegate) {
+                [delegate browserHandle:handle
+                    didReceiveScriptMessage:messageName
+                                   bodyJSON:body.length > 0 ? body : nil
+                                isMainFrame:isMainFrame];
+            });
+            return true;
+        }
+        if (name == cefwebview::kEvaluateResult) {
+            int requestID = args->GetInt(0);
+            BOOL succeeded = args->GetBool(1);
+            NSString* payload = NSStringFromCef(args->GetString(2));
+            WithHandle(^(CEFBrowserHandle* handle) {
+                [handle completeEvaluation:requestID succeeded:succeeded payload:payload];
+            });
+            return true;
+        }
+        return false;
+    }
+
+    // CefLifeSpanHandler overrides
+    bool OnBeforePopup(CefRefPtr<CefBrowser> browser,
+                       CefRefPtr<CefFrame> frame,
+                       int popup_id,
+                       const CefString& target_url,
+                       const CefString& target_frame_name,
+                       WindowOpenDisposition target_disposition,
+                       bool user_gesture,
+                       const CefPopupFeatures& popupFeatures,
+                       CefWindowInfo& windowInfo,
+                       CefRefPtr<CefClient>& client,
+                       CefBrowserSettings& settings,
+                       CefRefPtr<CefDictionaryValue>& extra_info,
+                       bool* no_javascript_access) override {
+        // CEF would otherwise open an unmanaged native window. Always cancel it; the app decides
+        // whether this browser loads the URL or opens a view of its own.
+        CEFPopupDecision decision = CEFPopupDecisionLoadInPlace;
+        CEFBrowserHandle* handle = _handle;
+        id<CEFBrowserHandleDelegate> delegate = handle.delegate;
+        if (delegate) {
+            decision = [delegate browserHandle:handle
+                             decidePopupForURL:NSStringFromCef(target_url)
+                                 isUserGesture:user_gesture];
+        }
+        if (decision == CEFPopupDecisionLoadInPlace && !target_url.empty()) {
+            browser->GetMainFrame()->LoadURL(target_url);
+        }
+        return true;
+    }
 
     // CefLifeSpanHandler overrides
     void OnAfterCreated(CefRefPtr<CefBrowser> browser) override {
@@ -273,6 +353,7 @@ public:
                                    const CefString& error_string) override {
         NSLog(@"💥 OnRenderProcessTerminated: status=%d error=%d %@",
               (int)status, error_code, NSStringFromCef(error_string));
+        WithHandle(^(CEFBrowserHandle* handle) { [handle rendererDidTerminate]; });
         WithDelegate(^(CEFBrowserHandle* handle, id<CEFBrowserHandleDelegate> delegate) {
             [delegate browserHandle:handle renderProcessTerminatedWithStatus:status];
         });
@@ -283,6 +364,16 @@ public:
                         CefRefPtr<CefRequest> request,
                         bool user_gesture,
                         bool is_redirect) override {
+        // CEF's UI thread is the main thread here, so the delegate answers synchronously.
+        CEFBrowserHandle* handle = _handle;
+        id<CEFBrowserHandleDelegate> delegate = handle.delegate;
+        if (delegate && ![delegate browserHandle:handle
+                             shouldNavigateToURL:NSStringFromCef(request->GetURL())
+                                     isMainFrame:frame->IsMain()
+                                   isUserGesture:user_gesture
+                                      isRedirect:is_redirect]) {
+            return true;
+        }
         if (frame->IsMain()) {
             SetMainFrameLoading(true);
         }
@@ -303,6 +394,14 @@ public:
             _mainFrameLoading = false;
         }
         ReportLoadingState();
+    }
+
+    void OnLoadStart(CefRefPtr<CefBrowser> browser,
+                     CefRefPtr<CefFrame> frame,
+                     TransitionType transition_type) override {
+        if (frame->IsMain()) {
+            WithHandle(^(CEFBrowserHandle* handle) { [handle mainFrameDidStartLoading]; });
+        }
     }
 
     void OnLoadEnd(CefRefPtr<CefBrowser> browser,
@@ -363,6 +462,74 @@ public:
         });
     }
 
+    // CefFindHandler overrides
+    void OnFindResult(CefRefPtr<CefBrowser> browser,
+                      int identifier,
+                      int count,
+                      const CefRect& selectionRect,
+                      int activeMatchOrdinal,
+                      bool finalUpdate) override {
+        WithDelegate(^(CEFBrowserHandle* handle, id<CEFBrowserHandleDelegate> delegate) {
+            [delegate browserHandle:handle findResultCount:count activeMatch:activeMatchOrdinal finalUpdate:finalUpdate];
+        });
+    }
+
+    // CefDownloadHandler overrides
+    bool OnBeforeDownload(CefRefPtr<CefBrowser> browser,
+                          CefRefPtr<CefDownloadItem> download_item,
+                          const CefString& suggested_name,
+                          CefRefPtr<CefBeforeDownloadCallback> callback) override {
+        CEFBrowserHandle* handle = _handle;
+        id<CEFBrowserHandleDelegate> delegate = handle.delegate;
+        NSString* path = [delegate browserHandle:handle
+                          destinationForDownload:download_item->GetId()
+                                             url:NSStringFromCef(download_item->GetURL())
+                                   suggestedName:NSStringFromCef(suggested_name)
+                                        mimeType:NSStringFromCef(download_item->GetMimeType())];
+        if (path.length > 0) {
+            callback->Continue(path.UTF8String, false);
+        }
+        // Not continuing cancels the download.
+        return true;
+    }
+
+    void OnDownloadUpdated(CefRefPtr<CefBrowser> browser,
+                           CefRefPtr<CefDownloadItem> download_item,
+                           CefRefPtr<CefDownloadItemCallback> callback) override {
+        const uint32_t downloadID = download_item->GetId();
+        NSString* path = NSStringFromCef(download_item->GetFullPath());
+        if (path.length == 0) {
+            return;  // Canceled before it was given a destination.
+        }
+        const bool finished = download_item->IsComplete() || download_item->IsCanceled() ||
+                              download_item->IsInterrupted();
+        if (finished) {
+            _downloadCallbacks.erase(downloadID);
+        } else {
+            _downloadCallbacks[downloadID] = callback;
+        }
+        int64_t received = download_item->GetReceivedBytes();
+        int64_t total = download_item->GetTotalBytes();
+        BOOL complete = download_item->IsComplete();
+        BOOL canceled = download_item->IsCanceled() || download_item->IsInterrupted();
+        WithDelegate(^(CEFBrowserHandle* handle, id<CEFBrowserHandleDelegate> delegate) {
+            [delegate browserHandle:handle
+                    downloadUpdated:downloadID
+                               path:path
+                      receivedBytes:received
+                         totalBytes:total
+                         isComplete:complete
+                         isCanceled:canceled];
+        });
+    }
+
+    void CancelDownload(uint32_t downloadID) {
+        auto it = _downloadCallbacks.find(downloadID);
+        if (it != _downloadCallbacks.end()) {
+            it->second->Cancel();
+        }
+    }
+
 private:
     void SetMainFrameLoading(bool loading) {
         if (_mainFrameLoading == loading) {
@@ -404,6 +571,7 @@ private:
     }
 
     __weak CEFBrowserHandle* _handle;
+    std::map<uint32_t, CefRefPtr<CefDownloadItemCallback>> _downloadCallbacks;
     // Load state, touched only on CEF's UI thread.
     bool _browserLoading = false;
     bool _mainFrameLoading = false;
@@ -504,6 +672,10 @@ static NSString* DefaultProfileDirectory(void) {
     CefRefPtr<CefBrowser> _browser;
     CefRefPtr<ChromiumClient> _client;
     BOOL _closeRequested;
+    NSMutableDictionary<NSNumber*, CEFJavaScriptCompletion>* _evaluations;
+    int _nextEvaluationID;
+    /// The renderer died and no new document has loaded since; scripts sent now would never answer.
+    BOOL _rendererGone;
 }
 
 - (nullable instancetype)initWithParentView:(NSView *)parentView
@@ -524,6 +696,7 @@ static NSString* DefaultProfileDirectory(void) {
         return nil;
     }
     _delegate = delegate;
+    _evaluations = [NSMutableDictionary dictionary];
     _client = new ChromiumClient(self);
 
     // SetAsChild forces Alloy (windowed-child) mode.
@@ -586,9 +759,106 @@ static NSString* DefaultProfileDirectory(void) {
     }
 }
 
+- (void)stopLoading {
+    if (self.isOpen) {
+        _browser->StopLoad();
+    }
+}
+
 - (void)goBack {
     if (self.isOpen) {
         _browser->GoBack();
+    }
+}
+
+- (void)evaluateJavaScript:(NSString *)script completion:(CEFJavaScriptCompletion)completion {
+    CefRefPtr<CefFrame> frame = self.isOpen ? _browser->GetMainFrame() : nullptr;
+    if (!frame || !frame->IsValid()) {
+        completion(nil, @"The browser has no page to run the script in", YES);
+        return;
+    }
+    if (_rendererGone) {
+        completion(nil, @"The page's renderer process ended. Reload to run scripts again", YES);
+        return;
+    }
+    int requestID = ++_nextEvaluationID;
+    _evaluations[@(requestID)] = [completion copy];
+    CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(cefwebview::kEvaluate);
+    message->GetArgumentList()->SetInt(0, requestID);
+    message->GetArgumentList()->SetString(1, script.UTF8String);
+    frame->SendProcessMessage(PID_RENDERER, message);
+}
+
+- (void)runScriptAsUserGesture:(NSString *)script {
+    if (!self.isOpen) {
+        return;
+    }
+    // DevTools' Runtime.evaluate can mark the script as user-initiated; nothing else in CEF can.
+    CefRefPtr<CefDictionaryValue> params = CefDictionaryValue::Create();
+    params->SetString("expression", script.UTF8String);
+    params->SetBool("userGesture", true);
+    _browser->GetHost()->ExecuteDevToolsMethod(0, "Runtime.evaluate", params);
+}
+
+- (void)completeEvaluation:(int)requestID succeeded:(BOOL)succeeded payload:(NSString *)payload {
+    CEFJavaScriptCompletion completion = _evaluations[@(requestID)];
+    if (!completion) {
+        return;
+    }
+    [_evaluations removeObjectForKey:@(requestID)];
+    if (succeeded) {
+        completion(payload.length > 0 ? payload : nil, nil, NO);
+    } else {
+        completion(nil, payload, NO);
+    }
+}
+
+- (void)rendererDidTerminate {
+    _rendererGone = YES;
+    [self failPendingEvaluations:@"The page's renderer process ended"];
+}
+
+- (void)mainFrameDidStartLoading {
+    _rendererGone = NO;
+    [self failPendingEvaluations:@"The page navigated before the script finished"];
+}
+
+- (void)failPendingEvaluations:(NSString *)reason {
+    if (_evaluations.count == 0) {
+        return;
+    }
+    NSDictionary<NSNumber*, CEFJavaScriptCompletion>* pending = [_evaluations copy];
+    [_evaluations removeAllObjects];
+    for (CEFJavaScriptCompletion completion in pending.objectEnumerator) {
+        completion(nil, reason, YES);
+    }
+}
+
+- (double)zoomLevel {
+    return self.isOpen ? _browser->GetHost()->GetZoomLevel() : 0;
+}
+
+- (void)setZoomLevel:(double)zoomLevel {
+    if (self.isOpen) {
+        _browser->GetHost()->SetZoomLevel(zoomLevel);
+    }
+}
+
+- (void)find:(NSString *)text forward:(BOOL)forward matchCase:(BOOL)matchCase findNext:(BOOL)findNext {
+    if (self.isOpen && text.length > 0) {
+        _browser->GetHost()->Find(text.UTF8String, forward, matchCase, findNext);
+    }
+}
+
+- (void)stopFinding:(BOOL)clearSelection {
+    if (self.isOpen) {
+        _browser->GetHost()->StopFinding(clearSelection);
+    }
+}
+
+- (void)cancelDownload:(uint32_t)downloadID {
+    if (_client) {
+        _client->CancelDownload(downloadID);
     }
 }
 
@@ -614,6 +884,7 @@ static NSString* DefaultProfileDirectory(void) {
 }
 
 - (void)browserDidClose {
+    [self failPendingEvaluations:@"The browser closed"];
     _browser = nullptr;
     _client = nullptr;
     _closeRequested = YES;
@@ -782,7 +1053,7 @@ static NSString* DefaultProfileDirectory(void) {
     CefString(&settings.framework_dir_path).FromString([cefFrameworkPath UTF8String]);
     CefString(&settings.main_bundle_path).FromString([bundlePath UTF8String]);
 
-    NSString *ua = [NSString stringWithFormat:
+    NSString *ua = options.userAgent ?: [NSString stringWithFormat:
         @"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
         @"Chrome/%d.%d.%d.%d Safari/537.36",
         CHROME_VERSION_MAJOR, CHROME_VERSION_MINOR, CHROME_VERSION_BUILD, CHROME_VERSION_PATCH];
@@ -832,6 +1103,24 @@ static NSString* DefaultProfileDirectory(void) {
 
 + (NSInteger)openBrowserCount {
     return (NSInteger)g_openBrowsers.size();
+}
+
++ (void)deleteAllCookiesWithCompletion:(void (^)(NSInteger deletedCount))completion {
+    class Callback final : public CefDeleteCookiesCallback {
+    public:
+        explicit Callback(void (^completion)(NSInteger)) : completion_([completion copy]) {}
+        void OnComplete(int numDeleted) override {
+            void (^completion)(NSInteger) = completion_;
+            RunOnMain(^{ completion(numDeleted); });
+        }
+    private:
+        void (^completion_)(NSInteger);
+        IMPLEMENT_REFCOUNTING(Callback);
+    };
+    CefRefPtr<CefCookieManager> manager = g_cefInitialized ? CefCookieManager::GetGlobalManager(nullptr) : nullptr;
+    if (!manager || !manager->DeleteCookies(CefString(), CefString(), new Callback(completion))) {
+        completion(0);
+    }
 }
 
 + (void)shutdown {

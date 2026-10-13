@@ -2,7 +2,7 @@
 
 import XCTest
 
-final class WebViewUITests: XCTestCase {
+nonisolated final class WebViewUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

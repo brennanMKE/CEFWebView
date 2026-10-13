@@ -2,7 +2,7 @@
 
 import XCTest
 
-final class WebViewUITestsLaunchTests: XCTestCase {
+nonisolated final class WebViewUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

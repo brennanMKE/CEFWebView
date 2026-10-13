@@ -7,7 +7,7 @@ nonisolated let cefLogger = Logger(subsystem: "co.sstools.CEFWebView", category:
 // MARK: - Configuration
 
 /// Process-wide settings for `CEFApplication.initialize(_:)`. The defaults suit a shipping app.
-public struct CEFConfiguration: Sendable {
+nonisolated public struct CEFConfiguration: Sendable {
     /// Run helper processes in Chromium's sandbox, so a compromised renderer cannot reach the file
     /// system, network or other processes directly. Turn off only for content you control.
     public var sandboxEnabled: Bool
@@ -29,18 +29,23 @@ public struct CEFConfiguration: Sendable {
     /// `~/Library/Application Support/<bundle id>/CEF`.
     public var profileDirectory: URL?
 
+    /// User-Agent header and `navigator.userAgent`. `nil` uses Chrome's.
+    public var userAgent: String?
+
     public init(
         sandboxEnabled: Bool = true,
         gpuEnabled: Bool = true,
         verboseLogging: Bool = false,
         useSystemKeychain: Bool = false,
-        profileDirectory: URL? = nil
+        profileDirectory: URL? = nil,
+        userAgent: String? = nil
     ) {
         self.sandboxEnabled = sandboxEnabled
         self.gpuEnabled = gpuEnabled
         self.verboseLogging = verboseLogging
         self.useSystemKeychain = useSystemKeychain
         self.profileDirectory = profileDirectory
+        self.userAgent = userAgent
     }
 }
 
@@ -58,7 +63,7 @@ public final class CEFApplication {
 
     /// Helper processes that have launched. GPU/network/storage typically spawn during
     /// `CefInitialize`, before any browser exists, so they are recorded here and applied on attach.
-    private var spawnedHelpers: Set<String> = []
+    private var launchedProcesses: Set<CEFProcessType> = []
 
     nonisolated(unsafe) private var spawnedObserver: NSObjectProtocol?
 
@@ -110,6 +115,7 @@ public final class CEFApplication {
         options.verboseLogging = configuration.verboseLogging
         options.useSystemKeychain = configuration.useSystemKeychain
         options.profileDirectory = configuration.profileDirectory?.path
+        options.userAgent = configuration.userAgent
 
         // Swift bridges initializeCEFWithOptions:error: as a throwing method
         do {
@@ -132,9 +138,7 @@ public final class CEFApplication {
 
     func register(_ host: CEFBrowserHost) {
         browserHosts.add(host)
-        if let state = host.state {
-            applySpawnedHelpers(to: state)
-        }
+        host.state?.processStatus.launched = launchedProcesses
     }
 
     func unregister(_ host: CEFBrowserHost) {
@@ -142,24 +146,22 @@ public final class CEFApplication {
     }
 
     func recordHelperSpawned(_ type: String) {
-        let lowerType = type.lowercased()
-        guard ["gpu", "network", "storage", "renderer"].contains(lowerType) else {
+        guard let process = CEFProcessType(rawValue: type.lowercased()) else {
             cefLogger.warning("Unknown helper type from CEF: \(type)")
             return
         }
-        spawnedHelpers.insert(lowerType)
+        guard launchedProcesses.insert(process).inserted else { return }
         for host in browserHosts.allObjects {
-            if let state = host.state {
-                applySpawnedHelpers(to: state)
-            }
+            host.state?.processStatus.launched = launchedProcesses
         }
     }
 
-    private func applySpawnedHelpers(to state: CEFWebViewState) {
-        if spawnedHelpers.contains("gpu"), !state.gpuHelperSpawned { state.gpuHelperSpawned = true }
-        if spawnedHelpers.contains("network"), !state.networkHelperSpawned { state.networkHelperSpawned = true }
-        if spawnedHelpers.contains("storage"), !state.storageHelperSpawned { state.storageHelperSpawned = true }
-        if spawnedHelpers.contains("renderer"), !state.rendererHelperSpawned { state.rendererHelperSpawned = true }
+    /// Delete every cookie in the profile. Returns how many were deleted.
+    @discardableResult
+    public func deleteAllCookies() async -> Int {
+        await withCheckedContinuation { continuation in
+            CEFWrapper.deleteAllCookies { continuation.resume(returning: $0) }
+        }
     }
 
     /// Close every open browser and shut CEF down. Call once, at app termination.
@@ -206,7 +208,12 @@ public final class CEFBrowserHost: NSObject {
     }
 
     func reload() {
+        state?.clearLoadError()
         handle.reload()
+    }
+
+    func stopLoading() {
+        handle.stopLoading()
     }
 
     func goBack() {
@@ -217,6 +224,42 @@ public final class CEFBrowserHost: NSObject {
         handle.goForward()
     }
 
+    /// JSON text of the result, or `nil` for `undefined`.
+    func evaluateJavaScript(_ script: String) async throws -> String? {
+        try await withCheckedThrowingContinuation { continuation in
+            handle.evaluateJavaScript(script) { json, errorMessage, pageUnavailable in
+                if let errorMessage {
+                    continuation.resume(throwing: pageUnavailable
+                        ? CEFJavaScriptError.pageUnavailable(errorMessage)
+                        : CEFJavaScriptError.exception(errorMessage))
+                } else {
+                    continuation.resume(returning: json)
+                }
+            }
+        }
+    }
+
+    func runScriptAsUserGesture(_ script: String) {
+        handle.runScript(asUserGesture: script)
+    }
+
+    var zoomLevel: Double {
+        get { handle.zoomLevel }
+        set { handle.zoomLevel = newValue }
+    }
+
+    func find(_ text: String, forward: Bool, matchCase: Bool, findNext: Bool) {
+        handle.find(text, forward: forward, matchCase: matchCase, findNext: findNext)
+    }
+
+    func stopFinding() {
+        handle.stopFinding(true)
+    }
+
+    func cancelDownload(_ id: UInt32) {
+        handle.cancelDownload(id)
+    }
+
     func notifyGeometryChanged() {
         handle.notifyGeometryChanged()
     }
@@ -225,6 +268,22 @@ public final class CEFBrowserHost: NSObject {
     func close() {
         handle.close()
         CEFApplication.shared.unregister(self)
+    }
+
+    /// ~/Downloads/<name>, numbered if that file exists.
+    private static func defaultDownloadDestination(for suggestedName: String) -> URL {
+        let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+        let name = suggestedName.isEmpty ? "download" : suggestedName
+        var candidate = folder.appendingPathComponent(name)
+        let base = candidate.deletingPathExtension().lastPathComponent
+        let ext = candidate.pathExtension
+        var index = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            let numbered = ext.isEmpty ? "\(base) \(index)" : "\(base) \(index).\(ext)"
+            candidate = folder.appendingPathComponent(numbered)
+            index += 1
+        }
+        return candidate
     }
 }
 
@@ -251,23 +310,62 @@ extension CEFBrowserHost: CEFBrowserHandleDelegate {
 
     public func browserHandle(_ handle: CEFBrowserHandle, mainFrameLoadFailedWithCode errorCode: Int, errorText: String?, failedURL: String?) {
         guard let state else { return }
-        state.rendererHelperFailed = true
-        state.lastMainFrameLoadErrorCode = errorCode
-        state.lastMainFrameLoadErrorText = errorText
+        state.lastError = CEFLoadError(code: errorCode, description: errorText ?? "", url: failedURL.flatMap(URL.init(string:)))
         state.isLoading = false
     }
 
     public func browserHandle(_ handle: CEFBrowserHandle, renderProcessTerminatedWithStatus status: Int) {
         guard let state else { return }
-        state.rendererHelperFailed = true
-        state.rendererHelperSpawned = false
-        state.lastMainFrameLoadErrorCode = nil
-        state.lastMainFrameLoadErrorText = nil
+        state.processStatus.rendererTerminated = true
         state.isLoading = false
     }
 
     public func browserHandleDidClose(_ handle: CEFBrowserHandle) {
         cefLogger.info("Browser closed (open browsers: \(CEFWrapper.openBrowserCount()))")
+    }
+
+    public func browserHandle(_ handle: CEFBrowserHandle, shouldNavigateToURL url: String, isMainFrame: Bool, isUserGesture: Bool, isRedirect: Bool) -> Bool {
+        guard let policy = state?.navigationPolicy else { return true }
+        let action = CEFNavigationAction(urlString: url, isMainFrame: isMainFrame, isUserGesture: isUserGesture, isRedirect: isRedirect)
+        return policy(action) == .allow
+    }
+
+    public func browserHandle(_ handle: CEFBrowserHandle, decidePopupForURL url: String, isUserGesture: Bool) -> CEFPopupDecision {
+        guard let policy = state?.newWindowPolicy else { return .loadInPlace }
+        switch policy(CEFNewWindowAction(urlString: url, isUserGesture: isUserGesture)) {
+        case .loadInPlace: return .loadInPlace
+        case .block: return .block
+        }
+    }
+
+    public func browserHandle(_ handle: CEFBrowserHandle, didReceiveScriptMessage name: String, bodyJSON: String?, isMainFrame: Bool) {
+        state?.receiveScriptMessage(name: name, bodyJSON: bodyJSON, isMainFrame: isMainFrame)
+    }
+
+    public func browserHandle(_ handle: CEFBrowserHandle, findResultCount count: Int, activeMatch: Int, finalUpdate: Bool) {
+        state?.findResult = CEFFindResult(matchCount: count, activeMatch: activeMatch)
+    }
+
+    public func browserHandle(_ handle: CEFBrowserHandle, destinationForDownload downloadID: UInt32, url: String, suggestedName: String, mimeType: String) -> String? {
+        let request = CEFDownloadRequest(url: URL(string: url), suggestedFilename: suggestedName, mimeType: mimeType)
+        let destination: URL?
+        if let policy = state?.downloadPolicy {
+            destination = policy(request)
+        } else {
+            destination = Self.defaultDownloadDestination(for: suggestedName)
+        }
+        return destination?.path
+    }
+
+    public func browserHandle(_ handle: CEFBrowserHandle, downloadUpdated downloadID: UInt32, path: String, receivedBytes: Int64, totalBytes: Int64, isComplete: Bool, isCanceled: Bool) {
+        guard let state else { return }
+        let download = CEFDownload(id: downloadID, destination: URL(fileURLWithPath: path), receivedBytes: receivedBytes,
+                                   totalBytes: totalBytes, isComplete: isComplete, isCanceled: isCanceled)
+        if let index = state.downloads.firstIndex(where: { $0.id == downloadID }) {
+            state.downloads[index] = download
+        } else {
+            state.downloads.append(download)
+        }
     }
 }
 

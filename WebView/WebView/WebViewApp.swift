@@ -23,6 +23,14 @@ struct WebViewApp: App {
         WindowGroup {
             ContentView()
         }
+        .commands {
+            BrowserMenuCommands()
+        }
+
+        // Pop-ups from a page (see ContentView's newWindowPolicy).
+        WindowGroup("Pop-up", for: URL.self) { $url in
+            ContentView(initialURL: url)
+        }
     }
 }
 
