@@ -5,11 +5,8 @@
 	<!-- Required for Chromium's V8 JavaScript engine (JIT compilation) -->
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
-	<!-- Required for Chromium helper process IPC via Mach task ports -->
+	<!-- V8 also writes executable code outside the JIT region -->
 	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-	<true/>
-	<!-- Allows debugger to attach and enables process IPC in development -->
-	<key>com.apple.security.get-task-allow</key>
 	<true/>
 </dict>
 </plist>

@@ -49,6 +49,7 @@ namespace {
 static bool g_gpuEnabled = true;
 static bool g_verboseLogging = false;
 static bool g_useMockKeychain = false;
+static bool g_systemNotificationsEnabled = false;
 
 /// Helper processes are shared by every browser, so this is a process-wide notification.
 static void PostHelperSpawned(const char* helperType) {
@@ -119,6 +120,14 @@ public:
         if (g_useMockKeychain) {
             // Without the keychain, cookies are stored unencrypted in the profile directory.
             command_line->AppendSwitch("use-mock-keychain");
+        }
+        if (!g_systemNotificationsEnabled) {
+            // Keeps Chromium from starting its macOS notification service (the Alerts helper), and
+            // with it the Notification Center registration banners. Pages see notifications denied.
+            command_line->AppendSwitch("disable-notifications");
+            std::string disabled = command_line->GetSwitchValue("disable-features").ToString();
+            disabled += disabled.empty() ? "SystemNotifications" : ",SystemNotifications";
+            command_line->AppendSwitchWithValue("disable-features", disabled);
         }
     }
 
@@ -963,6 +972,7 @@ static NSString* DefaultProfileDirectory(void) {
     g_gpuEnabled = options.gpuEnabled;
     g_verboseLogging = options.verboseLogging;
     g_useMockKeychain = !options.useSystemKeychain || IsAdHocSigned();
+    g_systemNotificationsEnabled = options.systemNotificationsEnabled;
 
 #if TARGET_OS_OSX
     // macOS: helpers are installed by Scripts/cef-embed as "<executable> Helper.app" next to the framework.

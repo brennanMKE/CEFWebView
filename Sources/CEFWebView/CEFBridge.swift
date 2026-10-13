@@ -25,6 +25,12 @@ nonisolated public struct CEFConfiguration: Sendable {
     /// unencrypted in `profileDirectory`.
     public var useSystemKeychain: Bool
 
+    /// Let pages show notifications through macOS Notification Center. Off by default: pages see
+    /// notification permission denied, and Chromium does not start its notification service, which
+    /// would register the app and its Alerts helper with Notification Center and make macOS show
+    /// "Notifications may include alerts…" banners.
+    public var systemNotificationsEnabled: Bool
+
     /// Where the browser profile (cookies, local storage, cache) is stored. `nil` uses
     /// `~/Library/Application Support/<bundle id>/CEF`.
     public var profileDirectory: URL?
@@ -37,6 +43,7 @@ nonisolated public struct CEFConfiguration: Sendable {
         gpuEnabled: Bool = true,
         verboseLogging: Bool = false,
         useSystemKeychain: Bool = false,
+        systemNotificationsEnabled: Bool = false,
         profileDirectory: URL? = nil,
         userAgent: String? = nil
     ) {
@@ -44,6 +51,7 @@ nonisolated public struct CEFConfiguration: Sendable {
         self.gpuEnabled = gpuEnabled
         self.verboseLogging = verboseLogging
         self.useSystemKeychain = useSystemKeychain
+        self.systemNotificationsEnabled = systemNotificationsEnabled
         self.profileDirectory = profileDirectory
         self.userAgent = userAgent
     }
@@ -114,6 +122,7 @@ public final class CEFApplication {
         options.gpuEnabled = configuration.gpuEnabled
         options.verboseLogging = configuration.verboseLogging
         options.useSystemKeychain = configuration.useSystemKeychain
+        options.systemNotificationsEnabled = configuration.systemNotificationsEnabled
         options.profileDirectory = configuration.profileDirectory?.path
         options.userAgent = configuration.userAgent
 

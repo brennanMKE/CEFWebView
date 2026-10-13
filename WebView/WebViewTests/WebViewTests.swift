@@ -256,9 +256,36 @@ struct CEFWebViewAPITests {
         defer { browser.close() }
 
         browser.state.loadHTML("<title>second</title><p>Second page</p>")
-        try await browser.waitUntil("the second page loads") { browser.state.title == "second" }
+        try await browser.waitUntil("the second page loads") { browser.state.title == "second" && !browser.state.isLoading }
         #expect(browser.state.canGoBack)
         #expect(browser.state.estimatedProgress == 1)
+    }
+
+    // MARK: Several browsers
+
+    @Test func browsersKeepIndependentStateAndHistory() async throws {
+        let first = try await Browser(html: "<p>First</p>", title: "first")
+        let second = try await Browser(html: "<p>Second</p>", title: "second")
+        defer { second.close() }
+
+        first.state.loadHTML("<title>first, page 2</title>")
+        try await first.waitUntil("the first browser navigates") { first.state.title == "first, page 2" && !first.state.isLoading }
+        #expect(first.state.canGoBack)
+        #expect(second.state.title == "second")
+        #expect(!second.state.canGoBack)
+        #expect(try await second.state.evaluateJavaScript("document.body.textContent") as? String == "Second")
+
+        first.state.goBack()
+        try await first.waitUntil("the first browser goes back") { first.state.title == "first" && !first.state.isLoading }
+        #expect(second.state.title == "second")
+
+        // Closing one leaves the other working.
+        first.close()
+        second.state.loadHTML("<title>second, page 2</title>")
+        try await second.waitUntil("the second browser still navigates") {
+            second.state.title == "second, page 2" && !second.state.isLoading
+        }
+        #expect(try await second.state.evaluateJavaScript("1 + 1") as? Int == 2)
     }
 
     // MARK: Find, zoom

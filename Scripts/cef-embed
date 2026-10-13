@@ -16,8 +16,9 @@
 #   <App>.app/Contents/Frameworks/<App> Helper (Alerts).app
 #
 # with bundle IDs <app id>.helper, .helper.gpu, .helper.renderer and .helper.alerts, signed with the
-# app's identity. Without the Alerts helper Chromium cannot start its notification service and
-# relaunches it forever with backoff. Xcode signs the app itself afterwards, sealing the helpers into it.
+# app's identity. Chromium uses the Alerts helper only when CEFConfiguration.systemNotificationsEnabled
+# is on; without it, Chromium would relaunch its notification service forever. Xcode signs the app
+# itself afterwards, sealing the helpers into it.
 
 set -euo pipefail
 

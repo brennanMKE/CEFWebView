@@ -37,6 +37,13 @@ Scripts/run-tests-vm.sh -- -only-testing:WebViewTests
 Scripts/run-tests-vm.sh -- "-only-testing:WebViewTests/CEFWebViewAPITests/findsTextInThePage()"
 ```
 
+To run something other than the tests, pass a script. It runs with zsh in the guest's source
+directory, with `RESULTS` set to the folder that comes back:
+
+```sh
+Scripts/run-tests-vm.sh --guest-script Scripts/dev/idle-probe.sh   # idle CPU and notification check
+```
+
 Anything after `--` is passed to `xcodebuild test`. Swift Testing identifiers need the trailing `()`;
 without it the filter matches nothing and the run "succeeds" with zero tests.
 
@@ -124,4 +131,4 @@ The integration tests are in `WebView/WebViewTests/WebViewTests.swift` and run i
 | Run waits before cloning | Another project holds both Tart slots; `tart-lease status` shows who. |
 | `TEST SUCCEEDED` with no tests | An `-only-testing:` filter without the trailing `()` on a Swift Testing name. |
 | A test exceeds its time limit | Usually an `await` the page never answers. `evaluateJavaScript` fails when the page navigates, crashes or closes, but not when a script simply never settles. |
-| Clone left in `tart list` | The script was SIGKILLed; the next run sweeps it. |
+| Clone left in `tart list` | The script was SIGKILLed; the next run sweeps it once that run's process is gone. |

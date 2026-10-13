@@ -57,6 +57,7 @@ struct ConfigurationTests {
         #expect(configuration.gpuEnabled)
         #expect(!configuration.verboseLogging)
         #expect(!configuration.useSystemKeychain)
+        #expect(!configuration.systemNotificationsEnabled)
         #expect(configuration.profileDirectory == nil)
         #expect(configuration.userAgent == nil)
     }

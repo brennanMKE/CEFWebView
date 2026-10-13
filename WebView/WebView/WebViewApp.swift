@@ -21,7 +21,12 @@ struct WebViewApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // `-StartURL <url>` on the command line overrides the first page, for measurements.
+            if let start = UserDefaults.standard.string(forKey: "StartURL") {
+                ContentView(initialURL: URL(string: start))
+            } else {
+                ContentView()
+            }
         }
         .commands {
             BrowserMenuCommands()

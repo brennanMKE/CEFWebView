@@ -4,22 +4,26 @@
 #   Scripts/run-tests-vm.sh                  # the working tree, every test in the WebView scheme
 #   Scripts/run-tests-vm.sh --ref HEAD       # a commit instead of the working tree
 #   Scripts/run-tests-vm.sh -- -only-testing:'WebViewTests/CEFWebViewAPITests/findsTextInThePage()'
+#   Scripts/run-tests-vm.sh --guest-script Scripts/dev/idle-probe.sh   # run a script instead of the tests
 #
 # These tests open windows, take focus and send mouse events, so they never run on the host.
 # See docs/TESTING_IN_TART.md. Each run clones the host's shared golden image, boots it headless,
 # builds and tests inside the guest, copies the results to build/vm-tests/<run-id>/, and deletes the
-# clone. Arguments after `--` go to `xcodebuild test`.
+# clone. Arguments after `--` go to `xcodebuild test`. A --guest-script runs with zsh in the source
+# directory instead of `xcodebuild test`; whatever it writes to ~/results comes back.
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 REF=""
+GUEST_SCRIPT=""
 XCODEBUILD_ARGS=()
 while (( $# )); do
   case "$1" in
     --ref) REF="$2"; shift 2 ;;
+    --guest-script) GUEST_SCRIPT="$2"; shift 2 ;;
     --) shift; XCODEBUILD_ARGS=("$@"); break ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) print -r -- "Unknown argument: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -157,10 +161,12 @@ if (( avail_bytes < need_bytes )); then
 fi
 
 # A SIGKILL skips the trap, so sweep clones earlier runs left behind. Only names in this script's own
-# run-id shape are touched, which can never match a golden image.
+# run-id shape are touched, which can never match a golden image, and only when the run that made
+# the clone (the pid at the end of its name) has exited: two runs may be going at once.
 stale=$(tart list | awk '$2 ~ /^cefwebview-uitest-[0-9]{8}-[0-9]{6}-[0-9]+$/ { print $2 }' | grep -v -- "$CLONE" || true)
 for old in ${=stale}; do
   [[ "$old" == "$GOLDEN" ]] && { print -r -- "!! refusing to sweep the golden image" >&2; continue; }
+  kill -0 "${old##*-}" 2>/dev/null && continue
   log "Sweeping stale clone: $old"
   tart stop "$old" >/dev/null 2>&1 || true
   tart delete "$old" >/dev/null 2>&1 || true
@@ -189,6 +195,10 @@ git -C "$REPO" archive --format=tar -o "$EXPORT/src.tar" "$TREE"
 if [[ -d "$REPO/Frameworks/ChromiumEmbeddedFramework.xcframework" ]]; then
   log "Adding the local CEF framework"
   tar -C "$REPO" -rf "$EXPORT/src.tar" Frameworks
+fi
+if [[ -n "$GUEST_SCRIPT" ]]; then
+  [[ -f "$GUEST_SCRIPT" ]] || fail "No such guest script: $GUEST_SCRIPT"
+  cp "$GUEST_SCRIPT" "$EXPORT/guest-script.sh"
 fi
 
 # --- Wait for a Tart slot --------------------------------------------------
@@ -223,13 +233,20 @@ tart exec "$CLONE" /bin/zsh -lc "rm -rf $GUEST_SRC $GUEST_RESULTS && mkdir -p $G
 SIGNING=(CODE_SIGN_STYLE=Manual "CODE_SIGN_IDENTITY=-" DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO)
 EXTRA="${(j: :)${(q)XCODEBUILD_ARGS[@]}}"
 
-log "Building and testing in the guest"
 set +e
-# pipefail inside the guest shell: without it the status is tee's, always 0.
-tart exec "$CLONE" /bin/zsh -lc \
-  "set -o pipefail; cd $GUEST_SRC && xcodebuild -project WebView/WebView.xcodeproj -scheme WebView \
-     -destination 'platform=macOS' -resultBundlePath $GUEST_RESULTS/Tests.xcresult ${SIGNING[*]} \
-     test $EXTRA 2>&1 | tee $GUEST_RESULTS/xcodebuild.log"
+if [[ -n "$GUEST_SCRIPT" ]]; then
+  log "Running $GUEST_SCRIPT in the guest"
+  tart exec "$CLONE" /bin/zsh -lc \
+    "set -o pipefail; cd $GUEST_SRC && RESULTS=$GUEST_RESULTS /bin/zsh '/Volumes/My Shared Files/run/guest-script.sh' \
+       2>&1 | tee $GUEST_RESULTS/guest-script.log"
+else
+  log "Building and testing in the guest"
+  # pipefail inside the guest shell: without it the status is tee's, always 0.
+  tart exec "$CLONE" /bin/zsh -lc \
+    "set -o pipefail; cd $GUEST_SRC && xcodebuild -project WebView/WebView.xcodeproj -scheme WebView \
+       -destination 'platform=macOS' -resultBundlePath $GUEST_RESULTS/Tests.xcresult ${SIGNING[*]} \
+       test $EXTRA 2>&1 | tee $GUEST_RESULTS/xcodebuild.log"
+fi
 test_rc=$?
 set -e
 
@@ -245,6 +262,11 @@ tart exec "$CLONE" /bin/zsh -lc "/usr/bin/log show --last 1h --style compact --i
 mkdir -p "$RESULTS_DIR"
 log "Pulling results into $RESULTS_DIR"
 tart exec "$CLONE" /bin/zsh -lc "tar -C $GUEST_RESULTS -cf - ." | tar -x -C "$RESULTS_DIR"
+
+if [[ -n "$GUEST_SCRIPT" ]]; then
+  log "Guest script exited $test_rc; output in $RESULTS_DIR"
+  exit "$test_rc"
+fi
 
 print ""
 grep -E "^Test case '.*' (passed|failed)|TEST (SUCCEEDED|FAILED)|Testing failed" "$RESULTS_DIR/xcodebuild.log" | tail -40 || true

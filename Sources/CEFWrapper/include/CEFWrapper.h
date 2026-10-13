@@ -172,6 +172,12 @@ NS_SWIFT_UI_ACTOR
 /// on every build.
 @property (nonatomic) BOOL useSystemKeychain;
 
+/// Web notifications (the Notification and Push APIs) shown through macOS Notification Center.
+/// Default NO: pages cannot show notifications, and Chromium does not start its notification
+/// service, which otherwise registers the app and its Alerts helper with Notification Center and
+/// makes macOS show "Notifications may include alerts, sounds and icon badges" banners.
+@property (nonatomic) BOOL systemNotificationsEnabled;
+
 /// Where the browser profile (cookies, local storage, cache) is stored. Default nil, which uses
 /// ~/Library/Application Support/<bundle id>/CEF.
 @property (nonatomic, copy, nullable) NSString *profileDirectory;
