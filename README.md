@@ -50,6 +50,19 @@ A work in progress: see [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md) for
    }
    ```
 
+   `initialize` takes an optional `CEFConfiguration`. The defaults suit a shipping app:
+
+   | Setting | Default | |
+   | --- | --- | --- |
+   | `gpuEnabled` | `true` | `false` renders in software. |
+   | `verboseLogging` | `false` | Chromium logs warnings and errors to `chrome_debug.log` in the profile directory. |
+   | `useSystemKeychain` | `false` | Encrypt cookies with a login-keychain key. Chromium names the item "Chromium Safe Storage" in every CEF app, so macOS asks for the login password when another app created it. Ignored for ad-hoc signed builds. |
+   | `profileDirectory` | `nil` | Cookies, local storage and cache. `nil` uses `~/Library/Application Support/<bundle id>/CEF`. |
+
+   ```swift
+   try CEFApplication.shared.initialize(CEFConfiguration(verboseLogging: true))
+   ```
+
 5. **Use the view:**
 
    ```swift

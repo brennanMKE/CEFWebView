@@ -80,6 +80,27 @@ NS_SWIFT_UI_ACTOR
 
 @end
 
+/// Settings for +initializeCEFWithOptions:error:. The defaults suit a shipping app.
+@interface CEFInitializationOptions : NSObject
+
+/// Hardware-accelerated rendering. Default YES; NO renders in software.
+@property (nonatomic) BOOL gpuEnabled;
+
+/// Verbose Chromium logging. Default NO, which logs warnings and errors only.
+@property (nonatomic) BOOL verboseLogging;
+
+/// Encrypt cookies with a key in the login keychain. Default NO. Chromium names the keychain item
+/// "Chromium Safe Storage" in every CEF app, so macOS asks for the login password whenever an app
+/// that did not create the item reads it. Ignored for ad-hoc signed builds, whose signature changes
+/// on every build.
+@property (nonatomic) BOOL useSystemKeychain;
+
+/// Where the browser profile (cookies, local storage, cache) is stored. Default nil, which uses
+/// ~/Library/Application Support/<bundle id>/CEF.
+@property (nonatomic, copy, nullable) NSString *profileDirectory;
+
+@end
+
 /// Process-wide CEF lifecycle.
 @interface CEFWrapper : NSObject
 
@@ -90,7 +111,7 @@ NS_SWIFT_UI_ACTOR
 
 /// Initialize CEF framework
 /// Must be called on the main thread, once at app startup
-+ (BOOL)initializeCEFWithError:(NSError **)error;
++ (BOOL)initializeCEFWithOptions:(CEFInitializationOptions *)options error:(NSError **)error;
 
 /// Number of browsers that have been created and not yet fully closed.
 + (NSInteger)openBrowserCount;

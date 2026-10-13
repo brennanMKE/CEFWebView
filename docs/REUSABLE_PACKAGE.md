@@ -114,16 +114,18 @@ Several settings were chosen to get the demo running and are unsafe or slow in a
 
 | Setting | Today | Ship default |
 | --- | --- | --- |
-| GPU | `--disable-gpu`, software rendering | GPU on; keep a configuration flag to turn it off |
+| GPU | ~~`--disable-gpu`, software rendering~~ Done: on, `CEFConfiguration.gpuEnabled` turns it off | GPU on; keep a configuration flag to turn it off |
 | Chromium sandbox | `--no-sandbox` on helpers | Sandbox on; confirm the helpers' entitlements allow it |
-| Logging | `LOGSEVERITY_VERBOSE`, `--v=3`, `enable-logging` | Warnings and errors; verbose only by configuration |
-| Cookie encryption | `--use-mock-keychain` (cookies unencrypted on disk) | Real keychain under a stable team signature; mock keychain only for ad-hoc debug builds |
-| Profile path | `~/Library/Caches/com.chromium.webview` for every app | `~/Library/Application Support/<bundle id>/CEF`, since Caches can be purged |
+| Logging | ~~`LOGSEVERITY_VERBOSE`, `--v=3`, `enable-logging`~~ Done: warnings, `verboseLogging` opts in | Warnings and errors; verbose only by configuration |
+| Cookie encryption | `--use-mock-keychain` (cookies unencrypted on disk); `useSystemKeychain` opts in | Real keychain under a stable team signature; mock keychain only for ad-hoc debug builds |
+| Profile path | ~~`~/Library/Caches/com.chromium.webview` for every app~~ Done | `~/Library/Application Support/<bundle id>/CEF`, since Caches can be purged |
 | State updates | ~~Swift polls CEF 4 times a second~~ Done: CEF callbacks post to the main actor | CEF callbacks post to the main actor; remove the timer |
 | Message pump | Scheduled work plus a 30 Hz fallback timer | Keep; this matches CEF's own Mac sample |
 | `CefShutdown` | Called when the view goes away | Called once at app termination (Workstream 1) |
 
 **Done when:** a Release build runs with the GPU and sandbox on, logs only warnings, keeps cookies across launches without keychain prompts, and uses under 1% CPU while idle.
+
+**Status (2026-10-12):** GPU, logging, profile path and keychain done; sandbox, notification banners and notarization remain. Settings are passed as `CEFConfiguration` to `CEFApplication.initialize(_:)`. The profile was never persisted before: `cache_path` was empty, so CEF ran in incognito mode; it now equals `root_cache_path`. The real keychain is opt-in rather than the default because Chromium's item name, "Chromium Safe Storage", is fixed in the CEF binary and shared by every CEF app, so a second app (or the same app under another bundle ID) gets a login-password prompt; there is no CEF setting to rename it. Notification banners are not solved: Chromium starts its `MacNotificationProvider` service in the Alerts helper (not on every launch), and macOS shows "Notifications may include alerts…" for the helper and the app. A trace showed no calls to `requestAuthorization` or `currentNotificationCenter` in our processes, so the cause is still unknown. A first sample of idle CPU is about 0.9% for the app and under 0.3% per helper.
 
 ## Workstream 6: Testing, documentation and CI
 

@@ -8,6 +8,7 @@
 #import "include/CEFWrapper.h"
 
 #import <Foundation/Foundation.h>
+#import <Security/Security.h>
 #import <TargetConditionals.h>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
@@ -30,14 +31,18 @@
 
 NSNotificationName const CEFHelperSpawnedNotification = @"CEFHelperSpawned";
 
-// ─── CEF App: command-line switches applied in every process ───────────────────
+// ─── CEF App: browser-process command-line switches ─────────────────────────────
 //
-// macOS often fails to spawn the GPU process (error 1003) under the default app
-// configuration (Hardened Runtime / Mach limits), then Chromium aborts with
-// "GPU process isn't usable". Disabling GPU forces software rendering and avoids
-// that subprocess. Pass the same CefApp to CefExecuteProcess and CefInitialize.
+// Pass the same CefApp to CefExecuteProcess and CefInitialize. Switches are only added in the
+// browser process; Chromium forwards what each child process needs.
 
 namespace {
+
+/// Browser-process settings chosen in +initializeCEFWithOptions:error:, read when CEF builds its
+/// command line during CefInitialize.
+static bool g_gpuEnabled = true;
+static bool g_verboseLogging = false;
+static bool g_useMockKeychain = false;
 
 /// Helper processes are shared by every browser, so this is a process-wide notification.
 static void PostHelperSpawned(const char* helperType) {
@@ -93,16 +98,22 @@ public:
 
     void OnBeforeCommandLineProcessing(const CefString& process_type,
                                        CefRefPtr<CefCommandLine> command_line) override {
-        // Disable GPU to avoid process launch failures under Hardened Runtime / Mach limits
-        command_line->AppendSwitch("disable-gpu");
-        // Do NOT disable gpu-compositing — it can break renderer rendering
-        command_line->AppendSwitch("disable-gpu-sandbox");
+        if (!process_type.empty()) {
+            return;
+        }
+        if (!g_gpuEnabled) {
+            command_line->AppendSwitch("disable-gpu");
+        }
+        if (g_verboseLogging) {
+            command_line->AppendSwitch("enable-logging");
+            command_line->AppendSwitchWithValue("v", "1");
+        }
         // QUIC / HTTP3 can complicate loads on some networks
         command_line->AppendSwitch("disable-quic");
-        // Skip the "Chromium Safe Storage" keychain item. Its ACL is tied to the code signature, so
-        // every rebuild (especially ad-hoc) re-prompts for keychain access. Cookies are stored
-        // unencrypted in the cache dir instead — fine for this demo app, not for a shipping browser.
-        command_line->AppendSwitch("use-mock-keychain");
+        if (g_useMockKeychain) {
+            // Without the keychain, cookies are stored unencrypted in the profile directory.
+            command_line->AppendSwitch("use-mock-keychain");
+        }
     }
 
     /// Called before each child process is launched (GPU, utility, renderer, etc.).
@@ -444,6 +455,47 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     return YES;
 }
 
+/// YES when this app has no team identifier: ad-hoc signed ("Sign to Run Locally") or unsigned.
+static BOOL IsAdHocSigned(void) {
+    SecCodeRef code = NULL;
+    if (SecCodeCopySelf(kSecCSDefaultFlags, &code) != errSecSuccess) {
+        return YES;
+    }
+    CFDictionaryRef info = NULL;
+    OSStatus status = SecCodeCopySigningInformation((SecStaticCodeRef)code, kSecCSSigningInformation, &info);
+    CFRelease(code);
+    if (status != errSecSuccess || !info) {
+        return YES;
+    }
+    BOOL adHoc = CFDictionaryGetValue(info, kSecCodeInfoTeamIdentifier) == NULL;
+    CFRelease(info);
+    return adHoc;
+}
+
+/// ~/Library/Application Support/<bundle id>/CEF. Caches would be purgeable, and a per-app directory
+/// keeps CEF's process-singleton lock from colliding with other CEF apps.
+static NSString* DefaultProfileDirectory(void) {
+    NSString* appSupport =
+        [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) firstObject];
+    NSString* appID = [[NSBundle mainBundle] bundleIdentifier]
+        ?: [[[NSBundle mainBundle] executablePath] lastPathComponent];
+    return [[appSupport stringByAppendingPathComponent:appID] stringByAppendingPathComponent:@"CEF"];
+}
+
+// ─── CEFInitializationOptions ────────────────────────────────────────────────────
+
+@implementation CEFInitializationOptions
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _gpuEnabled = YES;
+    }
+    return self;
+}
+
+@end
+
 // ─── CEFBrowserHandle Implementation ─────────────────────────────────────────────
 
 @implementation CEFBrowserHandle {
@@ -607,7 +659,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     return CefExecuteProcess(args, app, nullptr);
 }
 
-+ (BOOL)initializeCEFWithError:(NSError **)error {
++ (BOOL)initializeCEFWithOptions:(CEFInitializationOptions *)options error:(NSError **)error {
     if (g_cefInitialized) {
         NSLog(@"✓ CEF already initialized");
         return YES;
@@ -626,23 +678,9 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     settings.no_sandbox = 1;
     settings.external_message_pump = 1;
 
-    // Enable verbose logging
-    settings.log_severity = LOGSEVERITY_VERBOSE;
-    CefString(&settings.log_file).FromString("/tmp/cef_debug.log");
-
-    // Also append command-line switches for extra verbosity
-    CefRefPtr<CefCommandLine> command_line = CefCommandLine::GetGlobalCommandLine();
-    if (command_line.get()) {
-        command_line->AppendSwitch("enable-logging");
-        command_line->AppendSwitchWithValue("v", "3");  // v=3 for very verbose
-
-        // TEST: Single-process mode to isolate subprocess spawning issues
-        // If single-process mode works, the problem is subprocess spawning.
-        // If it still fails, the problem is in CEF core or configuration.
-        // IMPORTANT: Remove this after testing — single-process is not production-ready.
-        // Uncomment the line below to enable:
-        // command_line->AppendSwitch("single-process");
-    }
+    g_gpuEnabled = options.gpuEnabled;
+    g_verboseLogging = options.verboseLogging;
+    g_useMockKeychain = !options.useSystemKeychain || IsAdHocSigned();
 
 #if TARGET_OS_OSX
     // macOS: helpers are installed by Scripts/cef-embed as "<executable> Helper.app" next to the framework.
@@ -739,31 +777,18 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
         CHROME_VERSION_MAJOR, CHROME_VERSION_MINOR, CHROME_VERSION_BUILD, CHROME_VERSION_PATCH];
     CefString(&settings.user_agent).FromString([ua UTF8String]);
 
-    // Enable verbose CEF logging to debug page rendering issues
-    settings.log_severity = LOGSEVERITY_VERBOSE;
-    NSString* cacheDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject];
-    if (cacheDir) {
-        NSString* logPath = [cacheDir stringByAppendingPathComponent:@"com.chromium.webview/debug.log"];
-        CefString(&settings.log_file).FromString([logPath UTF8String]);
-        NSLog(@"✅ CEF debug log configured at: %@", logPath);
-    }
+    // cache_path equal to root_cache_path persists the default profile there. Left empty, CEF runs
+    // every browser in incognito mode and cookies and local storage are lost on quit.
+    NSString* profileDir = options.profileDirectory ?: DefaultProfileDirectory();
 
-    // Set cache path to avoid singleton behavior warnings
-    if (cacheDir) {
-        cacheDir = [cacheDir stringByAppendingPathComponent:@"com.chromium.webview"];
-        CefString(&settings.root_cache_path).FromString([cacheDir UTF8String]);
-        NSLog(@"✅ CEF cache path configured at: %@", cacheDir);
-    }
+    // CEF writes chrome_debug.log in the profile directory.
+    settings.log_severity = options.verboseLogging ? LOGSEVERITY_VERBOSE : LOGSEVERITY_WARNING;
+    NSString* logPath = [profileDir stringByAppendingPathComponent:@"chrome_debug.log"];
+    CefString(&settings.root_cache_path).FromString([profileDir UTF8String]);
+    CefString(&settings.cache_path).FromString([profileDir UTF8String]);
 
-    NSLog(@"🔧 ========================================");
-    NSLog(@"🔧 CEF Initialization Settings:");
-    NSLog(@"🔧   no_sandbox: %d", settings.no_sandbox);
-    NSLog(@"🔧   external_message_pump: %d", settings.external_message_pump);
-    NSLog(@"🔧   browser_subprocess_path: %@",
-          [NSString stringWithUTF8String:CefString(&settings.browser_subprocess_path).ToString().c_str()]);
-    NSLog(@"🔧   resources_dir_path: %@",
-          [NSString stringWithUTF8String:CefString(&settings.resources_dir_path).ToString().c_str()]);
-    NSLog(@"🔧 ========================================");
+    NSLog(@"🔧 CEF settings: profile=%@ gpu=%d verbose=%d mockKeychain=%d",
+          profileDir, g_gpuEnabled, g_verboseLogging, g_useMockKeychain);
 
     InstallCEFSendEventHook();
 
@@ -775,10 +800,10 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     if (!initResult) {
         NSString *errorMsg = [NSString stringWithFormat:
             @"CefInitialize failed. This is a critical initialization failure. "
-            @"Check the CEF debug log at %@/com.chromium.webview/debug.log for details. "
+            @"Check the CEF debug log at %@ for details. "
             @"Common causes: missing/invalid helper executable, resource file (icudtl.dat) not found, "
             @"framework path configuration error, or renderer subprocess initialization failure.",
-            cacheDir ?: @"~/Library/Caches"];
+            logPath];
         NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
         if (error) {
             *error = [NSError errorWithDomain:@"CEFWrapper"

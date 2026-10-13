@@ -4,6 +4,40 @@ import os.log
 
 nonisolated let cefLogger = Logger(subsystem: "co.sstools.CEFWebView", category: "CEFApplication")
 
+// MARK: - Configuration
+
+/// Process-wide settings for `CEFApplication.initialize(_:)`. The defaults suit a shipping app.
+public struct CEFConfiguration: Sendable {
+    /// Hardware-accelerated rendering. Turn off to render in software.
+    public var gpuEnabled: Bool
+
+    /// Verbose Chromium logging. Off logs warnings and errors only, to `chrome_debug.log` in
+    /// `profileDirectory`.
+    public var verboseLogging: Bool
+
+    /// Encrypt cookies with a key in the login keychain. Off by default: Chromium names the item
+    /// "Chromium Safe Storage" in every CEF app, so macOS asks for the login password whenever an app
+    /// that did not create it reads it. Ignored for ad-hoc signed builds. When off, cookies are stored
+    /// unencrypted in `profileDirectory`.
+    public var useSystemKeychain: Bool
+
+    /// Where the browser profile (cookies, local storage, cache) is stored. `nil` uses
+    /// `~/Library/Application Support/<bundle id>/CEF`.
+    public var profileDirectory: URL?
+
+    public init(
+        gpuEnabled: Bool = true,
+        verboseLogging: Bool = false,
+        useSystemKeychain: Bool = false,
+        profileDirectory: URL? = nil
+    ) {
+        self.gpuEnabled = gpuEnabled
+        self.verboseLogging = verboseLogging
+        self.useSystemKeychain = useSystemKeychain
+        self.profileDirectory = profileDirectory
+    }
+}
+
 // MARK: - CEF Application Lifecycle Manager
 
 /// Process-wide CEF lifecycle: initialization, shutdown, and helper processes shared by all browsers.
@@ -58,15 +92,21 @@ public final class CEFApplication {
     }
 
     /// Initialize CEF framework. Call once at app startup.
-    public func initialize() throws {
+    public func initialize(_ configuration: CEFConfiguration = CEFConfiguration()) throws {
         guard !isInitialized else {
             cefLogger.debug("CEF already initialized, skipping")
             return
         }
 
-        // Swift bridges initializeCEFWithError: as a throwing method
+        let options = CEFInitializationOptions()
+        options.gpuEnabled = configuration.gpuEnabled
+        options.verboseLogging = configuration.verboseLogging
+        options.useSystemKeychain = configuration.useSystemKeychain
+        options.profileDirectory = configuration.profileDirectory?.path
+
+        // Swift bridges initializeCEFWithOptions:error: as a throwing method
         do {
-            try CEFWrapper.initializeCEF()
+            try CEFWrapper.initializeCEF(with: options)
         } catch {
             let error = error as NSError
             let errorDesc = error.localizedDescription

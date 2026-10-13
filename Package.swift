@@ -67,6 +67,9 @@ let package = Package(
             publicHeadersPath: "include",
             cxxSettings: [
                 .headerSearchPath("../CEFDLLWrapper"),
+            ],
+            linkerSettings: [
+                .linkedFramework("Security"),
             ]
         ),
 
