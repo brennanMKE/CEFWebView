@@ -83,6 +83,10 @@ NS_SWIFT_UI_ACTOR
 /// Settings for +initializeCEFWithOptions:error:. The defaults suit a shipping app.
 @interface CEFInitializationOptions : NSObject
 
+/// Run helper processes in Chromium's sandbox, so a compromised renderer cannot reach the file
+/// system, network or other processes directly. Default YES.
+@property (nonatomic) BOOL sandboxEnabled;
+
 /// Hardware-accelerated rendering. Default YES; NO renders in software.
 @property (nonatomic) BOOL gpuEnabled;
 

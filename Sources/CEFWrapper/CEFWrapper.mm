@@ -27,6 +27,7 @@
 #include "include/cef_life_span_handler.h"
 #include "include/cef_request_handler.h"
 #include "include/cef_version.h"
+#include "include/cef_sandbox_mac.h"
 #include "include/wrapper/cef_library_loader.h"
 
 NSNotificationName const CEFHelperSpawnedNotification = @"CEFHelperSpawned";
@@ -489,6 +490,7 @@ static NSString* DefaultProfileDirectory(void) {
 - (instancetype)init {
     self = [super init];
     if (self) {
+        _sandboxEnabled = YES;
         _gpuEnabled = YES;
     }
     return self;
@@ -649,9 +651,18 @@ static NSString* DefaultProfileDirectory(void) {
               @"not the app — include helper processes in Console or log show.");
     }
 
+    // Helpers enter Chromium's sandbox before loading the framework (libcef_sandbox.dylib ships in
+    // the framework's Libraries folder). When the browser runs without the sandbox it passes
+    // --no-sandbox, and this only sets up the context. Lives until CefExecuteProcess returns.
+    CefScopedSandboxContext sandboxContext;
+    if (isCEFHelperArgv && !sandboxContext.Initialize(argc, argv)) {
+        NSLog(@"💥 Failed to initialize the CEF sandbox");
+        return 1;
+    }
+
     // Without loading the framework first, CefExecuteProcess jumps through a null stub (crash at 0x0).
     // Helper subprocesses must use LoadInHelper(), not LoadInMain() — see CEF cef_library_loader.h.
-    if (!EnsureCEFFrameworkLoaded(CEFIsHelperProcess(argc, argv) ? YES : NO, nil)) {
+    if (!EnsureCEFFrameworkLoaded(isCEFHelperArgv, nil)) {
         return 1;
     }
     CefMainArgs args(argc, argv);
@@ -675,7 +686,7 @@ static NSString* DefaultProfileDirectory(void) {
     CefMainArgs args;
     CefSettings settings;
 
-    settings.no_sandbox = 1;
+    settings.no_sandbox = options.sandboxEnabled ? 0 : 1;
     settings.external_message_pump = 1;
 
     g_gpuEnabled = options.gpuEnabled;
@@ -787,8 +798,8 @@ static NSString* DefaultProfileDirectory(void) {
     CefString(&settings.root_cache_path).FromString([profileDir UTF8String]);
     CefString(&settings.cache_path).FromString([profileDir UTF8String]);
 
-    NSLog(@"🔧 CEF settings: profile=%@ gpu=%d verbose=%d mockKeychain=%d",
-          profileDir, g_gpuEnabled, g_verboseLogging, g_useMockKeychain);
+    NSLog(@"🔧 CEF settings: profile=%@ sandbox=%d gpu=%d verbose=%d mockKeychain=%d",
+          profileDir, options.sandboxEnabled, g_gpuEnabled, g_verboseLogging, g_useMockKeychain);
 
     InstallCEFSendEventHook();
 

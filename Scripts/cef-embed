@@ -178,6 +178,31 @@ install_helper "${APP_NAME} Helper (GPU)" "${APP_BUNDLE_ID}.helper.gpu"
 install_helper "${APP_NAME} Helper (Renderer)" "${APP_BUNDLE_ID}.helper.renderer"
 install_helper "${APP_NAME} Helper (Alerts)" "${APP_BUNDLE_ID}.helper.alerts"
 
+# ─── Sign the framework's extra libraries ───────────────────────────────────────
+#
+# Xcode embeds and signs the framework before this phase, but signs only its main binary. The dylibs in
+# Libraries/ (libcef_sandbox.dylib, which every sandboxed helper loads, and the SwiftShader/Vulkan
+# fallbacks) keep CEF's ad-hoc signatures, and library validation rejects code from another team. Sign
+# them with the app's identity, then re-seal the framework.
+
+CEF_FRAMEWORK="${FRAMEWORKS_DIR}/Chromium Embedded Framework.framework"
+if [[ "${SIGN_IDENTITY}" != "-" && -d "${CEF_FRAMEWORK}" ]]; then
+    team_of() { codesign -dv "$1" 2>&1 | sed -n 's/^TeamIdentifier=//p'; }
+    FRAMEWORK_TEAM="$(team_of "${CEF_FRAMEWORK}")"
+    LIBRARIES_SIGNED=0
+    for library in "${CEF_FRAMEWORK}/Versions/A/Libraries/"*.dylib; do
+        if [[ "$(team_of "${library}")" != "${FRAMEWORK_TEAM}" ]]; then
+            codesign "${SIGN_OPTIONS[@]}" "${library}"
+            LIBRARIES_SIGNED=1
+        fi
+    done
+    if [[ "${LIBRARIES_SIGNED}" == 1 ]]; then
+        codesign "${SIGN_OPTIONS[@]}" "${CEF_FRAMEWORK}/Versions/A"
+        echo "cef-embed: signed the CEF framework's libraries with '${SIGN_IDENTITY}'"
+        HELPERS_CHANGED=1
+    fi
+fi
+
 # Xcode re-signs the app only when an input it tracks changes, and it does not know about files this
 # script adds. Touch the Info.plist so the app's CodeSign step runs again and seals the new helpers.
 if [[ "${HELPERS_CHANGED}" == 1 ]]; then

@@ -54,6 +54,7 @@ A work in progress: see [docs/REUSABLE_PACKAGE.md](docs/REUSABLE_PACKAGE.md) for
 
    | Setting | Default | |
    | --- | --- | --- |
+   | `sandboxEnabled` | `true` | Runs helpers in Chromium's sandbox, so a compromised renderer cannot reach files, the network or other processes directly. Turn off only for content you control. |
    | `gpuEnabled` | `true` | `false` renders in software. |
    | `verboseLogging` | `false` | Chromium logs warnings and errors to `chrome_debug.log` in the profile directory. |
    | `useSystemKeychain` | `false` | Encrypt cookies with a login-keychain key. Chromium names the item "Chromium Safe Storage" in every CEF app, so macOS asks for the login password when another app created it. Ignored for ad-hoc signed builds. |

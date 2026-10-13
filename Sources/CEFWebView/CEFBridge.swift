@@ -8,6 +8,10 @@ nonisolated let cefLogger = Logger(subsystem: "co.sstools.CEFWebView", category:
 
 /// Process-wide settings for `CEFApplication.initialize(_:)`. The defaults suit a shipping app.
 public struct CEFConfiguration: Sendable {
+    /// Run helper processes in Chromium's sandbox, so a compromised renderer cannot reach the file
+    /// system, network or other processes directly. Turn off only for content you control.
+    public var sandboxEnabled: Bool
+
     /// Hardware-accelerated rendering. Turn off to render in software.
     public var gpuEnabled: Bool
 
@@ -26,11 +30,13 @@ public struct CEFConfiguration: Sendable {
     public var profileDirectory: URL?
 
     public init(
+        sandboxEnabled: Bool = true,
         gpuEnabled: Bool = true,
         verboseLogging: Bool = false,
         useSystemKeychain: Bool = false,
         profileDirectory: URL? = nil
     ) {
+        self.sandboxEnabled = sandboxEnabled
         self.gpuEnabled = gpuEnabled
         self.verboseLogging = verboseLogging
         self.useSystemKeychain = useSystemKeychain
@@ -99,6 +105,7 @@ public final class CEFApplication {
         }
 
         let options = CEFInitializationOptions()
+        options.sandboxEnabled = configuration.sandboxEnabled
         options.gpuEnabled = configuration.gpuEnabled
         options.verboseLogging = configuration.verboseLogging
         options.useSystemKeychain = configuration.useSystemKeychain
