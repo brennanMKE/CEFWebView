@@ -33,16 +33,21 @@ log_error() {
 }
 
 # Build CEF dependencies
+# Builds Frameworks/ChromiumEmbeddedFramework.xcframework once; Package.swift prefers it over the
+# release download. Rerun Scripts/update_cef.sh directly after changing the CEF version.
 build_cef() {
-    log_info "Building CEF dependencies..."
+    if [ -d "$PROJECT_DIR/Frameworks/ChromiumEmbeddedFramework.xcframework" ]; then
+        log_success "CEF framework present"
+        return 0
+    fi
+    log_info "Building CEF framework..."
 
-    cd "$PROJECT_DIR"
-    ./build_cpp.sh > /dev/null 2>&1 || {
+    "$PROJECT_DIR/Scripts/update_cef.sh" > /dev/null 2>&1 || {
         log_error "CEF build failed"
         return 1
     }
 
-    log_success "CEF dependencies built"
+    log_success "CEF framework built"
 }
 
 # Clean action
@@ -124,7 +129,7 @@ Generated: $(date)
 ## Build Info
 - Configuration: Release
 - Xcode Version: $(xcodebuild -version)
-- CEF Version: $(grep -m1 '^CEF_VERSION=' "$PROJECT_DIR/build_cpp.sh" | sed -E 's/.*:-([^}]*)}.*/\1/')
+- CEF Version: $(grep -m1 '^CEF_VERSION=' "$PROJECT_DIR/Scripts/update_cef.sh" | sed -E 's/.*:-([^}]*)}.*/\1/')
 
 ## Contents
 - WebView.app: macOS application

@@ -540,9 +540,9 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     } else {
         NSLog(@"executeSubprocessWithArgc: no --type= in argv — this is the main browser binary "
               @"(Xcode often adds -NSDocumentRevisionsDebugMode etc.). "
-              @"GPU/utility/renderer helpers are separate OS processes (WebView Helper.app); "
-              @"their executeSubprocessWithArgc logs appear under the WebView Helper process, "
-              @"not WebView — include helper processes in Console or log show.");
+              @"GPU/utility/renderer helpers are separate OS processes (<App> Helper.app); "
+              @"their executeSubprocessWithArgc logs appear under the helper process, "
+              @"not the app — include helper processes in Console or log show.");
     }
 
     // Without loading the framework first, CefExecuteProcess jumps through a null stub (crash at 0x0).
@@ -593,7 +593,7 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     }
 
 #if TARGET_OS_OSX
-    // macOS: set absolute path to the generic helper (see WebView/Scripts/embed_cef_helpers.sh).
+    // macOS: helpers are installed by Scripts/cef-embed as "<executable> Helper.app" next to the framework.
     NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
     NSLog(@"🔍 Main bundle path: %@", bundlePath);
     NSString *frameworksDir = [bundlePath stringByAppendingPathComponent:@"Contents/Frameworks"];
@@ -634,15 +634,18 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
     }
     NSLog(@"✅ CEF resources verified at: %@", cefResourcesPath);
 
-    // HARD FAIL: WebView Helper executable must exist and be executable
+    // HARD FAIL: the helper executable must exist and be executable. CEF finds the GPU and
+    // renderer variants from this path by appending " (GPU)" / " (Renderer)" to the bundle name.
+    NSString *executableName = [[[NSBundle mainBundle] executablePath] lastPathComponent];
+    NSString *helperName = [executableName stringByAppendingString:@" Helper"];
     NSString *helperExe = [frameworksDir stringByAppendingPathComponent:
-        @"WebView Helper.app/Contents/MacOS/WebView Helper"];
+        [NSString stringWithFormat:@"%@.app/Contents/MacOS/%@", helperName, helperName]];
     NSLog(@"🔍 Checking helper at: %@", helperExe);
 
     if (![[NSFileManager defaultManager] fileExistsAtPath:helperExe]) {
         NSString *errorMsg = [NSString stringWithFormat:
-            @"WebView Helper executable not found at %@. This is a critical initialization failure. "
-            @"Run the 'embed_cef_helpers' build phase or execute 'swift build' to build helpers.",
+            @"CEF helper executable not found at %@. This is a critical initialization failure. "
+            @"Add a Run Script build phase that runs CEFWebView's Scripts/cef-embed.",
             helperExe];
         NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
         if (error) {
@@ -656,9 +659,8 @@ static BOOL EnsureCEFFrameworkLoaded(BOOL isHelperProcess, NSError **error) {
 
     if (![[NSFileManager defaultManager] isExecutableFileAtPath:helperExe]) {
         NSString *errorMsg = [NSString stringWithFormat:
-            @"WebView Helper at %@ exists but is not executable. This is a critical initialization failure. "
-            @"The helper may lack proper code signing or JIT entitlements. "
-            @"Rebuild with 'swift build' and ensure the embed_cef_helpers build phase runs.",
+            @"CEF helper at %@ exists but is not executable. This is a critical initialization failure. "
+            @"Check that the Scripts/cef-embed build phase ran and signed it.",
             helperExe];
         NSLog(@"💥 INITIALIZATION FAILED: %@", errorMsg);
         if (error) {

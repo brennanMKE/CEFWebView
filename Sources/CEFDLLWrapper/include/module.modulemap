@@ -1,0 +1,4 @@
+// Not part of the CEF distribution. Declares an empty module so SwiftPM does not build CEF's C++
+// headers into a Clang module; C++ targets include them through a header search path instead.
+module CEFDLLWrapper {
+}

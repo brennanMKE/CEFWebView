@@ -55,6 +55,8 @@ The package must resolve by version with no local CEF build. That means shipping
 
 **Done when:** a new Xcode project adds the package by version from GitHub and builds without running any script by hand.
 
+**Status (2026-10-12):** implemented, not yet published. `Package.swift` has no `unsafeFlags`. `libcef_dll_wrapper` and CEF's headers are vendored in `Sources/CEFDLLWrapper` and compiled as a C++ target. Nothing links the CEF framework except the app: `CefScopedLibraryLoader` opens it at runtime, so the helper needs no rpaths. `Scripts/update_cef.sh` replaces `build_cpp.sh`; it vendors the sources and builds the XCFramework zip and checksum. The XCFramework is assembled by hand because `xcodebuild -create-xcframework` replaces the versioned framework's symlinks with copies. The zip is written without `._*` AppleDouble files, which would break signing. A local `Frameworks/ChromiumEmbeddedFramework.xcframework` takes precedence over the download. Versions are `<CEF major>.<CEF patch>.<revision>` (CEF 154.0.34 → `154.34.0`), not `154.0.34-1`, because SwiftPM's normal version requirements skip pre-release versions. `swift test` now links and runs. Remaining: upload the zip to the `154.34.0` GitHub release and tag it, then add the package by version in a fresh project.
+
 ## Workstream 3: Host app integration
 
 Embedding should be one build step configured by the host app's name and bundle ID, not three hand-copied run scripts.
@@ -80,6 +82,8 @@ MyApp.app/Contents/
 - **Notarization:** document a Developer ID build and `notarytool` submission of an app that embeds CEF. Not yet tested.
 
 **Done when:** a fresh macOS app target, with only the package dependency and the one script phase, runs, signs with a team identity, and passes `codesign --verify --deep --strict` and notarization.
+
+**Status (2026-10-12):** implemented except notarization. Because `CEFWebView` depends on the framework's binary target, Xcode embeds and signs `Chromium Embedded Framework.framework` itself, and keeps its symlinks. `Scripts/cef-embed` does the rest: it builds `CEFHelper` with SwiftPM in a clean environment, then installs and signs `<App> Helper`, `(GPU)`, `(Renderer)` and `(Alerts)`. Without the Alerts helper, Chromium relaunched its notification service forever with backoff. The script takes names from `EXECUTABLE_NAME` and `PRODUCT_BUNDLE_IDENTIFIER`, uses hardened runtime only with a real identity, adds a secure timestamp for archives, and includes `get-task-allow` only in Debug. It skips unchanged helpers. When a helper does change, it touches the app's `Info.plist`, because otherwise Xcode doesn't re-sign the app and the seal breaks. The phase is always-run rather than declaring inputs and outputs, because the helper's real inputs are the package sources. `CEFWrapper` derives `browser_subprocess_path` from the main executable's name. Verified: a clean Debug build and a Release build renamed to `Browsy` / `com.example.browsy` both pass `codesign --verify --deep --strict` with a team identity and load pages. Open issues: notarization is untested (M3). Chromium's notification service also makes macOS show "Notifications may include alerts" banners for the app and helpers on first launch; turning that off belongs in Workstream 5. In a remote checkout, the helper's `swift build` will probably download the framework artifact a second time (into SwiftPM's cache), which can only be confirmed after the release is published.
 
 ## Workstream 4: API surface
 

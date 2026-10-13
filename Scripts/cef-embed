@@ -1,0 +1,183 @@
+#!/bin/bash
+# Installs the CEF helper apps into an app that uses CEFWebView. Run it from one Run Script build
+# phase on the app target:
+#
+#   "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/CEFWebView/Scripts/cef-embed"
+#
+# and set ENABLE_USER_SCRIPT_SANDBOXING = NO on that target (the script writes into the app bundle).
+#
+# Xcode already embeds and signs Chromium Embedded Framework.framework because the CEFWebView library
+# depends on it. This script adds what Xcode cannot: it builds the package's CEFHelper executable and
+# installs it as the helper apps CEF launches, named after the host app,
+#
+#   <App>.app/Contents/Frameworks/<App> Helper.app
+#   <App>.app/Contents/Frameworks/<App> Helper (GPU).app
+#   <App>.app/Contents/Frameworks/<App> Helper (Renderer).app
+#   <App>.app/Contents/Frameworks/<App> Helper (Alerts).app
+#
+# with bundle IDs <app id>.helper, .helper.gpu, .helper.renderer and .helper.alerts, signed with the
+# app's identity. Without the Alerts helper Chromium cannot start its notification service and
+# relaunches it forever with backoff. Xcode signs the app itself afterwards, sealing the helpers into it.
+
+set -euo pipefail
+
+: "${TARGET_BUILD_DIR:?cef-embed must run from an Xcode Run Script build phase}"
+
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+APP_NAME="${EXECUTABLE_NAME}"
+APP_BUNDLE_ID="${PRODUCT_BUNDLE_IDENTIFIER}"
+FRAMEWORKS_DIR="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
+WORK_DIR="${TARGET_TEMP_DIR}/cef-embed"
+
+# ─── Build the helper executable ────────────────────────────────────────────────
+
+if [[ "${CONFIGURATION}" == "Debug" ]]; then
+    SWIFT_CONFIGURATION="debug"
+else
+    SWIFT_CONFIGURATION="release"
+fi
+
+# Run SwiftPM in a clean environment: Xcode exports hundreds of build settings (SDKROOT, ARCHS, ...)
+# that are meant for the app target, not for a nested `swift build`.
+swift_build() {
+    env -i HOME="${HOME}" PATH="/usr/bin:/bin:/usr/sbin:/sbin" TMPDIR="${TMPDIR:-/tmp}" \
+        DEVELOPER_DIR="${DEVELOPER_DIR}" \
+        xcrun swift build --package-path "${PACKAGE_DIR}" --scratch-path "${WORK_DIR}/swiftpm" \
+        -c "${SWIFT_CONFIGURATION}" --product CEFHelper "$@"
+}
+
+echo "cef-embed: building CEFHelper (${SWIFT_CONFIGURATION})"
+swift_build
+HELPER_EXECUTABLE="$(swift_build --show-bin-path)/CEFHelper"
+if [[ ! -s "${HELPER_EXECUTABLE}" ]]; then
+    echo "error: cef-embed: CEFHelper was not built at ${HELPER_EXECUTABLE}"
+    exit 1
+fi
+
+# ─── Signing settings from the app target ───────────────────────────────────────
+
+SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:-}"
+if [[ -z "${SIGN_IDENTITY}" || "${CODE_SIGNING_ALLOWED:-YES}" != "YES" ]]; then
+    SIGN_IDENTITY="-"
+fi
+
+SIGN_OPTIONS=(--force --sign "${SIGN_IDENTITY}")
+if [[ "${SIGN_IDENTITY}" != "-" ]]; then
+    # Hardened runtime turns on library validation, which rejects ad-hoc signed code, so it is
+    # only used with a real identity.
+    if [[ "${ENABLE_HARDENED_RUNTIME:-NO}" == "YES" ]]; then
+        SIGN_OPTIONS+=(--options runtime)
+    fi
+    # Notarization needs a secure timestamp; archives (ACTION=install) get one.
+    if [[ "${ACTION:-build}" == "install" ]]; then
+        SIGN_OPTIONS+=(--timestamp)
+    else
+        SIGN_OPTIONS+=(--timestamp=none)
+    fi
+fi
+
+mkdir -p "${WORK_DIR}"
+ENTITLEMENTS="${WORK_DIR}/helper.entitlements"
+{
+    cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- V8 compiles JavaScript at runtime -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+EOF
+    if [[ "${CONFIGURATION}" == "Debug" ]]; then
+        cat <<EOF
+	<!-- Debug builds only: lets a debugger attach to helper processes -->
+	<key>com.apple.security.get-task-allow</key>
+	<true/>
+EOF
+    fi
+    cat <<EOF
+</dict>
+</plist>
+EOF
+} > "${ENTITLEMENTS}"
+
+# ─── Install the helper apps ────────────────────────────────────────────────────
+
+write_info_plist() {
+    local plist="$1" name="$2" bundle_id="$3"
+    cat > "${plist}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>${name}</string>
+	<key>CFBundleIdentifier</key>
+	<string>${bundle_id}</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>${name}</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>${MARKETING_VERSION:-1.0}</string>
+	<key>CFBundleVersion</key>
+	<string>${CURRENT_PROJECT_VERSION:-1}</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>${MACOSX_DEPLOYMENT_TARGET}</string>
+	<!-- Helpers never show in the Dock -->
+	<key>LSUIElement</key>
+	<true/>
+</dict>
+</plist>
+EOF
+}
+
+install_helper() {
+    local name="$1" bundle_id="$2"
+    local app="${FRAMEWORKS_DIR}/${name}.app"
+    local staged="${WORK_DIR}/${name}.app"
+
+    rm -rf "${staged}"
+    mkdir -p "${staged}/Contents/MacOS"
+    cp "${HELPER_EXECUTABLE}" "${staged}/Contents/MacOS/${name}"
+    write_info_plist "${staged}/Contents/Info.plist" "${name}" "${bundle_id}"
+
+    # Skip re-signing when nothing changed, so the app is not re-sealed on every build.
+    if [[ -d "${app}" ]] \
+        && cmp -s "${HELPER_EXECUTABLE}" "${WORK_DIR}/${name}.unsigned" \
+        && cmp -s "${staged}/Contents/Info.plist" "${app}/Contents/Info.plist" \
+        && cmp -s "${ENTITLEMENTS}" "${WORK_DIR}/${name}.entitlements" \
+        && codesign --verify --strict "${app}" 2>/dev/null; then
+        echo "cef-embed: ${name}.app is up to date"
+        return
+    fi
+
+    rm -rf "${app}"
+    mkdir -p "${FRAMEWORKS_DIR}"
+    ditto "${staged}" "${app}"
+    # Keep an unsigned copy outside the bundle to detect changes on the next build.
+    cp "${HELPER_EXECUTABLE}" "${WORK_DIR}/${name}.unsigned"
+    cp "${ENTITLEMENTS}" "${WORK_DIR}/${name}.entitlements"
+    codesign "${SIGN_OPTIONS[@]}" --entitlements "${ENTITLEMENTS}" "${app}"
+    echo "cef-embed: installed ${name}.app (${bundle_id}), signed with '${SIGN_IDENTITY}'"
+    HELPERS_CHANGED=1
+}
+
+HELPERS_CHANGED=0
+
+install_helper "${APP_NAME} Helper" "${APP_BUNDLE_ID}.helper"
+install_helper "${APP_NAME} Helper (GPU)" "${APP_BUNDLE_ID}.helper.gpu"
+install_helper "${APP_NAME} Helper (Renderer)" "${APP_BUNDLE_ID}.helper.renderer"
+install_helper "${APP_NAME} Helper (Alerts)" "${APP_BUNDLE_ID}.helper.alerts"
+
+# Xcode re-signs the app only when an input it tracks changes, and it does not know about files this
+# script adds. Touch the Info.plist so the app's CodeSign step runs again and seals the new helpers.
+if [[ "${HELPERS_CHANGED}" == 1 ]]; then
+    touch "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+fi

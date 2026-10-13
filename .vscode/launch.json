@@ -5,26 +5,6 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:CEFWebView}",
-            "name": "Debug CEFHelperRenderer",
-            "target": "CEFHelperRenderer",
-            "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug CEFHelperRenderer"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:CEFWebView}",
-            "name": "Release CEFHelperRenderer",
-            "target": "CEFHelperRenderer",
-            "configuration": "release",
-            "preLaunchTask": "swift: Build Release CEFHelperRenderer"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:CEFWebView}",
             "name": "Debug CEFHelper",
             "target": "CEFHelper",
             "configuration": "debug",

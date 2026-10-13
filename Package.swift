@@ -4,11 +4,26 @@
 import Foundation
 import PackageDescription
 
-/// Absolute path so `swift build` can link `-lcef_dll_wrapper` for helper executables (relative `-L` breaks).
-private let cefFrameworksDirectory: String = {
-    let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-    return packageDir.appendingPathComponent("Frameworks", isDirectory: true).path
-}()
+// MARK: - CEF framework release
+//
+// Package versions are <CEF major>.<CEF patch>.<package revision>: CEF 154.0.34 ships as 154.34.0, a
+// package-only fix as 154.34.1. Scripts/update_cef.sh builds the zip and prints its checksum; it is
+// uploaded to the GitHub release whose tag is `releaseTag`.
+let releaseTag = "154.34.0"
+let cefChecksum = "c538e2a048ca241817076a92b26bb53be420074c910a3eb2d1bb53eb908c8e40"
+
+/// Maintainers build the framework locally with Scripts/update_cef.sh (git-ignored); everyone else
+/// downloads the release artifact.
+let localCEFXCFramework = "Frameworks/ChromiumEmbeddedFramework.xcframework"
+let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let chromiumEmbeddedFramework: Target =
+    FileManager.default.fileExists(atPath: packageDirectory.appendingPathComponent(localCEFXCFramework).path)
+    ? .binaryTarget(name: "ChromiumEmbeddedFramework", path: localCEFXCFramework)
+    : .binaryTarget(
+        name: "ChromiumEmbeddedFramework",
+        url: "https://github.com/brennanMKE/CEFWebView/releases/download/\(releaseTag)/ChromiumEmbeddedFramework.xcframework.zip",
+        checksum: cefChecksum
+    )
 
 let package = Package(
     name: "CEFWebView",
@@ -18,80 +33,60 @@ let package = Package(
             name: "CEFWebView",
             targets: ["CEFWebView"]
         ),
-        // Built by SPM for embedding in the host app bundle (see IMPLEMENTATION_GUIDE.md).
+        // Subprocess executable for CEF's helper apps. Scripts/cef-embed builds it and copies it into
+        // the host app as "<App> Helper.app" and its (GPU), (Renderer) and (Alerts) variants.
         .executable(name: "CEFHelper", targets: ["CEFHelper"]),
-        .executable(name: "CEFHelperRenderer", targets: ["CEFHelperRenderer"]),
     ],
     targets: [
+        // MARK: - CEFDLLWrapper: CEF's C++ wrapper (libcef_dll_wrapper), vendored from the CEF distribution
+        //
+        // The CEF framework itself is never linked: CefScopedLibraryLoader opens it at runtime and these
+        // sources forward every cef_* call to it. CEF includes its headers as "include/...", so dependents
+        // add this directory as a header search path; include/module.modulemap exports no headers, which
+        // keeps the C++ API out of Swift.
+        .target(
+            name: "CEFDLLWrapper",
+            path: "Sources/CEFDLLWrapper",
+            exclude: ["LICENSE.txt"],
+            sources: ["libcef_dll"],
+            cxxSettings: [
+                .headerSearchPath("."),
+                .define("WRAPPING_CEF_SHARED"),
+                .define("__STDC_CONSTANT_MACROS"),
+                .define("__STDC_FORMAT_MACROS"),
+            ]
+        ),
+
+        // MARK: - ChromiumEmbeddedFramework: the CEF runtime (~320 MB), embedded and signed by Xcode
+        chromiumEmbeddedFramework,
+
         // MARK: - CEFWrapper: ObjC++ bridge to CEF C++ API
         .target(
             name: "CEFWrapper",
+            dependencies: ["CEFDLLWrapper"],
             publicHeadersPath: "include",
             cxxSettings: [
-                .headerSearchPath("../../Frameworks/include"),
-                .headerSearchPath("../../Frameworks"),
-                .unsafeFlags(["-std=c++20"])
-            ],
-            linkerSettings: [
-                .linkedLibrary("cef_dll_wrapper"),
-                .linkedFramework("Chromium Embedded Framework")
-                // -L for libcef_dll_wrapper.a: SwiftPM resolves when building the package; Xcode apps should
-                // set LIBRARY_SEARCH_PATHS to the package Frameworks dir (see WebView/Configuration/Build.xcconfig).
-                // Do not add -L../../Frameworks or -rpath here — Xcode forwards unsafeFlags to the app linker
-                // with the wrong cwd and duplicates LD_RUNPATH on the app target.
+                .headerSearchPath("../CEFDLLWrapper"),
             ]
         ),
 
         // MARK: - CEFWebView: Swift library target (public API)
         .target(
             name: "CEFWebView",
-            dependencies: ["CEFWrapper"],
+            // Depending on the framework is what makes Xcode embed it in the host app. CEFHelper does
+            // not, so building the helper never needs it.
+            dependencies: ["CEFWrapper", "ChromiumEmbeddedFramework"],
             swiftSettings: [
                 .defaultIsolation(MainActor.self)
             ]
         ),
 
-        // MARK: - CEF subprocess helpers (link CEFWrapper; copy into *.app under Contents/Frameworks/)
-        // Helpers embed as …/Frameworks/WebView Helper*.app/Contents/MacOS/WebView Helper; CEF is
-        // …/Frameworks/Chromium Embedded Framework.framework (sibling of the helper .app). @rpath
-        // from build_cpp.sh points inside that framework — add @loader_path so dyld finds it at runtime.
-        // Second rpath keeps `swift build` + run from .build/.../debug/CEFHelper working (Frameworks at repo root).
+        // MARK: - CEFHelper: one executable for every helper role (CEF picks the role from --type=)
         .executableTarget(
             name: "CEFHelper",
             dependencies: ["CEFWrapper"],
-            path: "Sources/CEFHelper",
-            sources: ["main.mm"],
-            cxxSettings: [
-                .unsafeFlags(["-std=c++20"]),
-            ],
             linkerSettings: [
-                .linkedFramework("Foundation"),
                 .linkedFramework("AppKit"),
-                .unsafeFlags([
-                    "-L", cefFrameworksDirectory,
-                    "-F", cefFrameworksDirectory,
-                    "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../..",
-                    "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../../Frameworks",
-                ]),
-            ]
-        ),
-        .executableTarget(
-            name: "CEFHelperRenderer",
-            dependencies: ["CEFWrapper"],
-            path: "Sources/CEFHelperRenderer",
-            sources: ["main.mm"],
-            cxxSettings: [
-                .unsafeFlags(["-std=c++20"]),
-            ],
-            linkerSettings: [
-                .linkedFramework("Foundation"),
-                .linkedFramework("AppKit"),
-                .unsafeFlags([
-                    "-L", cefFrameworksDirectory,
-                    "-F", cefFrameworksDirectory,
-                    "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../..",
-                    "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../../Frameworks",
-                ]),
             ]
         ),
 
@@ -101,5 +96,6 @@ let package = Package(
             dependencies: ["CEFWebView"]
         ),
     ],
-    swiftLanguageModes: [.v6]
+    swiftLanguageModes: [.v6],
+    cxxLanguageStandard: .cxx20
 )

@@ -1,21 +1,7 @@
-// CEF Frameworks live under the package root at ../Frameworks (relative to this WebView/ project).
-// The CEFWrapper package links -lcef_dll_wrapper; Xcode must pass -L here so the final app link
-// finds libcef_dll_wrapper.a (SPM's -L../../Frameworks does not resolve for the app linker cwd).
-// Do not set OTHER_LDFLAGS = -lcef_dll_wrapper — that duplicates SPM's -lcef_dll_wrapper.
-FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
-LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../Frameworks"
-
-// RPATH for the main executable is set on the WebView target (@executable_path/../Frameworks).
-// Do not add $(SRCROOT) to LD_RUNPATH — that path does not exist on end-user machines.
-
-// Copy frameworks to app bundle during build
-// The Chromium Embedded Framework is copied via a Copy Files build phase
-COPY_PHASE_STRIP = NO
-
 SWIFT_VERSION = 6.0
 SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
 
-// allow running scripts from Build Phase scripts
+// The "Embed CEF Helpers" phase (CEFWebView's Scripts/cef-embed) writes helper apps into the bundle.
 ENABLE_USER_SCRIPT_SANDBOXING = NO
 
 CODE_SIGN_ENTITLEMENTS = WebView/WebView.entitlements
