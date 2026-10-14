@@ -51,7 +51,7 @@ The package must resolve by version with no local CEF build. That means shipping
 - **Compiler flags:** replace `-std=c++20` with `cxxLanguageStandard: .cxx20`, and point header search paths at folders inside the package instead of `../../Frameworks`.
 - **Helper rpaths:** drop the `-rpath` linker flags from the helper targets and set rpaths with `install_name_tool` when the helpers are embedded (Workstream 3).
 - **Versioning:** the package version tracks CEF (for example `154.0.34-1`). `build_cpp.sh` becomes a maintainer-only release tool.
-- **Open question:** Apple silicon only (as today), or universal? An x86_64 slice roughly doubles the download.
+- **Architectures:** Apple silicon only (decided 2026-10-13). No x86_64 slice, which would roughly double the download.
 
 **Done when:** a new Xcode project adds the package by version from GitHub and builds without running any script by hand.
 

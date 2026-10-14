@@ -17,10 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select the newest Xcode
+      # The image's default Xcode, not the newest beta it also carries.
+      - name: Xcode version
         run: |
-          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
-          sudo xcode-select -s "$xcode"
           xcodebuild -version
           swift --version
 
@@ -40,6 +39,7 @@ jobs:
       - name: Demo app build and tests (ad hoc signed)
         run: |
           set -o pipefail
+          mkdir -p build
           xcodebuild -project WebView/WebView.xcodeproj -scheme WebView -destination 'platform=macOS' \
             -resultBundlePath build/Tests.xcresult \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO \
